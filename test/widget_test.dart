@@ -1,30 +1,39 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:greendrive/main.dart';
+import 'package:greendrive/screens/login_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('GreenDrive App Tests', () {
+    testWidgets('Login screen shows correctly', (WidgetTester tester) async {
+      // Build our app and trigger a frame
+      await tester.pumpWidget(const MainApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      // Verify that the login screen is shown
+      expect(find.byType(LoginScreen), findsOneWidget);
+      
+      // Verify that email and password fields are present
+      expect(find.widgetWithText(TextFormField, 'Email'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
+      
+      // Verify that login button exists
+      expect(find.widgetWithText(FilledButton, 'Login'), findsOneWidget);
+      
+      // Verify that signup prompt exists
+      expect(find.text("Don't have an account?"), findsOneWidget);
+      expect(find.text('Sign Up'), findsOneWidget);
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    testWidgets('Login form validation works', (WidgetTester tester) async {
+      await tester.pumpWidget(const MainApp());
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      // Try to login without entering credentials
+      await tester.tap(find.widgetWithText(FilledButton, 'Login'));
+      await tester.pump();
+
+      // Verify validation messages are shown
+      expect(find.text('Please enter your email'), findsOneWidget);
+      expect(find.text('Please enter your password'), findsOneWidget);
+    });
   });
 }
