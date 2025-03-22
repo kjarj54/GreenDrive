@@ -5,9 +5,16 @@ import 'package:greendrive/widgets/auth/auth_divider.dart';
 class LoginForm extends StatefulWidget {
   final Function() onLogin;
   final bool isLoading;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
 
-  const LoginForm({Key? key, required this.onLogin, this.isLoading = false})
-    : super(key: key);
+  const LoginForm({
+    Key? key, 
+    required this.onLogin, 
+    this.isLoading = false,
+    required this.emailController,
+    required this.passwordController,
+  }) : super(key: key);
 
   @override
   State<LoginForm> createState() => _LoginFormState();
@@ -24,6 +31,7 @@ class _LoginFormState extends State<LoginForm> {
       child: Column(
         children: [
           TextFormField(
+            controller: widget.emailController,
             decoration: InputDecoration(
               labelText: 'Email',
               hintText: 'Enter your email',
@@ -44,6 +52,7 @@ class _LoginFormState extends State<LoginForm> {
           ),
           const SizedBox(height: 16),
           TextFormField(
+            controller: widget.passwordController,
             decoration: InputDecoration(
               labelText: 'Password',
               hintText: 'Enter your password',

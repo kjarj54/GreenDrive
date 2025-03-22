@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:greendrive/screens/home_screen.dart';
+import 'package:greendrive/services/auth_services.dart';
 import 'package:greendrive/widgets/shared/gradient_background.dart';
 import '../widgets/auth/login_header.dart';
 import '../widgets/auth/login_form.dart';
@@ -10,10 +12,14 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
   late AnimationController _loadingController;
   late Animation<double> _fadeAnimation;
+  final _authService = AuthService();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -36,27 +42,43 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Future<void> _handleLogin() async {
     setState(() => _isLoading = true);
 
-    // Show animated loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) => _buildLoadingDialog(),
-    );
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => _buildLoadingDialog(),
+      );
 
-    // Start animation
-    _loadingController.forward();
+      _loadingController.forward();
 
-    // Simulate login process
-    await Future.delayed(const Duration(seconds: 2));
+      final user = await _authService.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
 
-    // Close loading dialog
-    Navigator.of(context).pop();
+      Navigator.of(context).pop(); // Close loading dialog
 
-    // Show success animation
-    _showSuccessMessage();
-
-    setState(() => _isLoading = false);
-    _loadingController.reset();
+      if (user.token != null) {
+        _showSuccessMessage();
+        // Navigate to home screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+      _loadingController.reset();
+    }
   }
 
   @override
@@ -71,7 +93,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const LoginHeader(),
-                  LoginForm(onLogin: _handleLogin, isLoading: _isLoading),
+                  LoginForm(
+                    onLogin: _handleLogin,
+                    isLoading: _isLoading,
+                    emailController: _emailController,
+                    passwordController: _passwordController,
+                  ),
                 ],
               ),
             ),
@@ -100,9 +127,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Colors.green.shade700,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade700),
             ),
             const SizedBox(height: 16),
             FadeTransition(
@@ -137,9 +162,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
         backgroundColor: Colors.green.shade700,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(10),
         duration: const Duration(seconds: 3),
         animation: CurvedAnimation(
