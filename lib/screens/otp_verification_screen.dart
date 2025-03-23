@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:greendrive/screens/home_screen.dart';
-import 'package:greendrive/screens/otp_verification_screen.dart';
 import 'package:greendrive/services/auth_services.dart';
+import 'package:greendrive/widgets/auth/otp_form.dart';
+import 'package:greendrive/widgets/auth/otp_header.dart';
 import 'package:greendrive/widgets/shared/gradient_background.dart';
-import '../widgets/auth/login_header.dart';
-import '../widgets/auth/login_form.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+class OTPVerificationScreen extends StatefulWidget {
+  final int usuarioId;
+  final String email;
+
+  const OTPVerificationScreen({
+    Key? key,
+    required this.usuarioId,
+    required this.email,
+  }) : super(key: key);
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _OTPVerificationScreenState extends State<OTPVerificationScreen>
     with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  final _authService = AuthService();
+  final _otpController = TextEditingController();
+
   late AnimationController _loadingController;
   late Animation<double> _fadeAnimation;
-  final _authService = AuthService();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -40,46 +46,46 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleVerify() async {
     setState(() => _isLoading = true);
 
     try {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (BuildContext context) => _buildLoadingDialog(),
+        builder: (_) => _buildLoadingDialog(),
       );
 
       _loadingController.forward();
 
-      final response = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
+      final user = await _authService.verifyOTP(
+        widget.usuarioId,
+        _otpController.text.trim(),
       );
 
       Navigator.of(context).pop();
 
-      final usuarioId = response['usuarioId'];
-      final email = response['email'];
-
-      if (usuarioId == null || email == null) {
-        throw Exception('Invalid credentials');
+      if (user.token != null && user.name != null) {
+        _showSuccessMessage();
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        throw Exception(
+          "Verification succeeded but essential user data is missing.",
+        );
       }
-
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder:
-              (context) =>
-                  OTPVerificationScreen(usuarioId: usuarioId, email: email),
-        ),
-      );
     } catch (e) {
       Navigator.of(context).pop();
+
+      final isOtpError = e.toString().contains("Invalid or expired OTP");
+      final errorMessage =
+          isOtpError
+              ? "The OTP code is invalid or has expired. Please try again."
+              : "An unexpected error occurred during verification. Please check the code and try again.";
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -98,12 +104,11 @@ class _LoginScreenState extends State<LoginScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const LoginHeader(),
-                  LoginForm(
-                    onLogin: _handleLogin,
+                  OTPHeader(email: widget.email),
+                  OTPForm(
+                    onVerify: _handleVerify,
                     isLoading: _isLoading,
-                    emailController: _emailController,
-                    passwordController: _passwordController,
+                    otpController: _otpController,
                   ),
                 ],
               ),
@@ -139,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen>
             FadeTransition(
               opacity: _fadeAnimation,
               child: Text(
-                'Iniciando sesión...',
+                'Verificando OTP...',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.green.shade700,
@@ -161,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen>
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 12),
             const Text(
-              '¡Bienvenido a GreenDrive! 🌱',
+              '¡Verificado correctamente! 🌱',
               style: TextStyle(fontSize: 16),
             ),
           ],

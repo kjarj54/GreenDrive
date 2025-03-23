@@ -7,7 +7,7 @@ class AuthService {
   static const String baseUrl = 'http://localhost:8080';
   static const String tokenKey = 'auth_token';
 
-  Future<User> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/user/login'),
@@ -16,26 +16,47 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final userData = json.decode(response.body);
-        final user = User.fromJson(userData);
+        final data = json.decode(response.body);
+        return {
+          'usuarioId': data['usuarioId'],
+          'email': email,
+        };
+      } else if (response.statusCode == 401) {
+        throw Exception('Credenciales inválidas');
+      } else {
+        throw Exception('Error en login: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      print('Error en login: $e');
+      rethrow;
+    }
+  }
 
-        // SharedPreference
+  Future<User> verifyOTP(int usuarioId, String codigo) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/otp/verify'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'usuarioId': usuarioId, 'codigo': codigo}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final user = User.fromJson(data);
+
         if (user.token != null) {
           await _saveToken(user.token!);
         } else {
-          throw Exception('Token not found in response');
+          throw Exception('Token no encontrado en la respuesta');
         }
 
         return user;
-      } else if (response.statusCode == 401) {
-        throw Exception('Invalid credentials');
       } else {
-        print('Error response: ${response.body}');
-        throw Exception('Failed to login: ${response.reasonPhrase}');
+        throw Exception('OTP inválido o expirado');
       }
     } catch (e) {
-      print('Error: $e');
-      throw Exception('Failed to login: $e');
+      print('Error al verificar OTP: $e');
+      rethrow;
     }
   }
 
