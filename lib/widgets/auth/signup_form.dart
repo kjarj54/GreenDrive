@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:greendrive/widgets/shared/custom_textfield.dart';
 
 class SignupForm extends StatefulWidget {
-  final VoidCallback onSignup;
+  final Function(String nombre, String email, String password) onSignup;
+  final bool isLoading;
 
-  const SignupForm({
-    Key? key,
-    required this.onSignup,
-  }) : super(key: key);
+  const SignupForm({Key? key, required this.onSignup, this.isLoading = false})
+    : super(key: key);
 
   @override
   State<SignupForm> createState() => _SignupFormState();
@@ -15,8 +14,21 @@ class SignupForm extends StatefulWidget {
 
 class _SignupFormState extends State<SignupForm> {
   final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +39,6 @@ class _SignupFormState extends State<SignupForm> {
           _buildNameFields(),
           const SizedBox(height: 16),
           _buildEmailField(),
-          const SizedBox(height: 16),
-          _buildPhoneField(),
           const SizedBox(height: 16),
           _buildPasswordFields(),
           const SizedBox(height: 24),
@@ -43,41 +53,23 @@ class _SignupFormState extends State<SignupForm> {
   }
 
   Widget _buildNameFields() {
-    return Row(
-      children: [
-        Expanded(
-          child: CustomTextField(
-            labelText: 'Nombre',
-            hintText: 'Introduce tu nombre',
-            prefixIcon: Icons.person_outline,
-            validator: (value) {
-              if (value?.isEmpty ?? true) {
-                return 'Por favor ingresa tu nombre';
-              }
-              return null;
-            },
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: CustomTextField(
-            labelText: 'Apellido',
-            hintText: 'Introduce tu apellido',
-            prefixIcon: Icons.person_outline,
-            validator: (value) {
-              if (value?.isEmpty ?? true) {
-                return 'Por favor ingresa tu apellido';
-              }
-              return null;
-            },
-          ),
-        ),
-      ],
+    return CustomTextField(
+      controller: _nombreController,
+      labelText: 'Nombre',
+      hintText: 'Introduce tu nombre completo',
+      prefixIcon: Icons.person_outline,
+      validator: (value) {
+        if (value?.isEmpty ?? true) {
+          return 'Por favor ingresa tu nombre';
+        }
+        return null;
+      },
     );
   }
 
-  Widget _buildEmailField() {
+   Widget _buildEmailField() {
     return CustomTextField(
+      controller: _emailController,
       labelText: 'Email',
       hintText: 'Introduce tu email',
       prefixIcon: Icons.email_outlined,
@@ -86,20 +78,8 @@ class _SignupFormState extends State<SignupForm> {
         if (value?.isEmpty ?? true) {
           return 'Por favor ingresa tu email';
         }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPhoneField() {
-    return CustomTextField(
-      labelText: 'Phone Number',
-      hintText: 'Enter your phone number',
-      prefixIcon: Icons.phone_outlined,
-      keyboardType: TextInputType.phone,
-      validator: (value) {
-        if (value?.isEmpty ?? true) {
-          return 'Por favor ingresa tu número de teléfono';
+        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
+          return 'Por favor ingresa un email válido';
         }
         return null;
       },
@@ -110,6 +90,7 @@ class _SignupFormState extends State<SignupForm> {
     return Column(
       children: [
         CustomTextField(
+          controller: _passwordController,
           labelText: 'Password',
           hintText: 'Create your password',
           prefixIcon: Icons.lock_outline,
@@ -122,11 +103,15 @@ class _SignupFormState extends State<SignupForm> {
             if (value?.isEmpty ?? true) {
               return 'Por favor ingresa tu contraseña';
             }
+            if (value!.length < 6) {
+              return 'La contraseña debe tener al menos 6 caracteres';
+            }
             return null;
           },
         ),
         const SizedBox(height: 16),
         CustomTextField(
+          controller: _confirmPasswordController,
           labelText: 'Confirm Password',
           hintText: 'Confirm your password',
           prefixIcon: Icons.lock_outline,
@@ -138,6 +123,9 @@ class _SignupFormState extends State<SignupForm> {
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return 'Por favor confirma tu contraseña';
+            }
+            if (value != _passwordController.text) {
+              return 'Las contraseñas no coinciden';
             }
             return null;
           },
@@ -155,18 +143,26 @@ class _SignupFormState extends State<SignupForm> {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      onPressed: () {
-        if (_formKey.currentState!.validate()) {
-          widget.onSignup();
-        }
-      },
-      child: const Text(
-        'Sign Up',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      onPressed: widget.isLoading
+          ? null
+          : () {
+              if (_formKey.currentState!.validate()) {
+                widget.onSignup(
+                  _nombreController.text,
+                  _emailController.text,
+                  _passwordController.text,
+                );
+              }
+            },
+      child: widget.isLoading
+          ? const CircularProgressIndicator(color: Colors.white)
+          : const Text(
+              'Sign Up',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
     );
   }
 
@@ -195,10 +191,7 @@ class _SignupFormState extends State<SignupForm> {
   Widget _buildTermsText() {
     return Text(
       'By signing up, you agree to our Terms & Conditions\nand Privacy Policy',
-      style: TextStyle(
-        color: Colors.grey[600],
-        fontSize: 12,
-      ),
+      style: TextStyle(color: Colors.grey[600], fontSize: 12),
       textAlign: TextAlign.center,
     );
   }

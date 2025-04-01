@@ -1,11 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:greendrive/services/auth_services.dart';
 import 'package:greendrive/widgets/shared/gradient_background.dart';
 import '../widgets/auth/signup_header.dart';
 import '../widgets/auth/signup_form.dart';
 
-class SignupScreen extends StatelessWidget {
+class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SignupScreen> createState() => _SignupScreenState();
+}
+
+class _SignupScreenState extends State<SignupScreen> {
+  final _authService = AuthService();
+  bool _isLoading = false;
+
+  Future<void> _handleSignup(
+    String nombre,
+    String email,
+    String password,
+  ) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final user = await _authService.register(nombre, email, password);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Registration successful! Please login.'),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+
+      Navigator.pop(context); // Return to login screen
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +66,8 @@ class SignupScreen extends StatelessWidget {
                 children: [
                   const SignupHeader(),
                   SignupForm(
-                    onSignup: () {
-                      // Handle signup logic here
-                    },
+                    onSignup: _handleSignup,
+                    isLoading: _isLoading,
                   ),
                 ],
               ),

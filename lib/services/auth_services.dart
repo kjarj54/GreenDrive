@@ -1,10 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:greendrive/model/user.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://localhost:8080';
+  static String get baseUrl {
+    // You can add more platform-specific logic here
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8080';
+    }
+    return 'http://localhost:8080';
+  }
   static const String tokenKey = 'auth_token';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -17,10 +24,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return {
-          'usuarioId': data['usuarioId'],
-          'email': email,
-        };
+        return {'usuarioId': data['usuarioId'], 'email': email};
       } else if (response.statusCode == 401) {
         throw Exception('Credenciales inválidas');
       } else {
@@ -77,5 +81,31 @@ class AuthService {
   Future<void> _removeToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(tokenKey);
+  }
+
+
+  Future<User> register(String nombre, String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/user'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nombre': nombre,
+          'correo': email,
+          'contrasena': password,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return User.fromJson(data);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['error'] ?? 'Error during registration');
+      }
+    } catch (e) {
+      print('Error in registration: $e');
+      rethrow;
+    }
   }
 }
