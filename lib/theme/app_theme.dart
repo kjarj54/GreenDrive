@@ -6,7 +6,15 @@ class AppTheme {
   static const Color secondaryColor = Color(0xFF2196F3);
   static const Color backgroundColor = Color(0xFFF5F5F5);
   static const Color errorColor = Color(0xFFD32F2F);
-
+  static const bottomNavBarStyle = BottomNavigationBarThemeData(
+    backgroundColor: Colors.white,
+    selectedItemColor: primaryColor,
+    unselectedItemColor: Colors.grey,
+    showSelectedLabels: true,
+    showUnselectedLabels: true,
+    type: BottomNavigationBarType.fixed,
+    elevation: 8,
+  );
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
@@ -61,6 +69,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
+    bottomNavigationBarTheme: bottomNavBarStyle,
   );
 
   static ThemeData darkTheme = ThemeData(
@@ -69,5 +78,6 @@ class AppTheme {
       seedColor: primaryColor,
       brightness: Brightness.dark,
     ),
+    bottomNavigationBarTheme: bottomNavBarStyle,
   );
 }
