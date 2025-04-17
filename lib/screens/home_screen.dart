@@ -30,6 +30,45 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Feed'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
+      appBar: AppBar(
+        title: const Text('GreenDrive'),
+        backgroundColor: Colors.green.shade700,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle),
+            onPressed: () {
+              // Navegar al perfil del usuario
+              Navigator.pushNamed(context, '/profile');
+            },
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Badges',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildBadge(context, Icons.ev_station, 'Estaciones'),
+                _buildBadge(context, Icons.route, 'Rutas'),
+                _buildBadge(context, Icons.group, 'Comunidad'),
+                _buildBadge(context, Icons.bar_chart, 'Estadísticas'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
