@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:greendrive/providers/user_provider.dart';
 import 'package:greendrive/screens/home_screen.dart';
 import 'package:greendrive/services/auth_services.dart';
 import 'package:greendrive/widgets/auth/otp_form.dart';
 import 'package:greendrive/widgets/auth/otp_header.dart';
 import 'package:greendrive/widgets/shared/gradient_background.dart';
+import 'package:provider/provider.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final int usuarioId;
@@ -65,7 +67,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
 
       Navigator.of(context).pop();
 
-      if (user.token != null && user.name != null) {
+      if (user.token != null && user.token!.isNotEmpty && user.id > 0) {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        userProvider.setUser(id: user.id, name: user.name, email: user.email);
+
         _showSuccessMessage();
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),

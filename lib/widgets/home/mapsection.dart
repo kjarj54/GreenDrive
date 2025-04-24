@@ -13,7 +13,7 @@ class _MapSectionState extends State<MapSection> {
   late GoogleMapController mapController;
   LatLng _currentPosition = const LatLng(9.9281, -84.0907);
   final Set<Marker> _markers = {};
-  
+
   @override
   void initState() {
     super.initState();
@@ -45,10 +45,8 @@ class _MapSectionState extends State<MapSection> {
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
     });
-    
-    mapController.animateCamera(
-      CameraUpdate.newLatLng(_currentPosition),
-    );
+
+    mapController.animateCamera(CameraUpdate.newLatLng(_currentPosition));
   }
 
   void _onMapCreated(GoogleMapController controller) {

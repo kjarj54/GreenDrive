@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:greendrive/screens/home_screen.dart';
 import 'package:greendrive/screens/otp_verification_screen.dart';
 import 'package:greendrive/services/auth_services.dart';
 import 'package:greendrive/widgets/shared/gradient_background.dart';
