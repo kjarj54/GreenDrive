@@ -44,6 +44,34 @@ class VehicleService {
     }
   }
 
+  Future<Vehicle?> fetchCurrentVehicle(int userId) async {
+    final token = await _getToken();
+    final resp = await http.get(
+      Uri.parse('$baseUrl/user/$userId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (resp.statusCode == 200) {
+      final data = json.decode(resp.body);
+      if (data['vehiculoId'] != null) {
+        final vehicleId = data['vehiculoId'];
+        final catalog = await fetchCatalog();
+
+        final matches = catalog.where((v) => v.id == vehicleId);
+        if (matches.isNotEmpty) {
+          return matches.first;
+        } else {
+          return null;
+        }
+      }
+      return null;
+    } else {
+      throw Exception('Failed to load current vehicle');
+    }
+  }
+
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('auth_token');
