@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:greendrive/services/auth_services.dart';
+import 'package:greendrive/services/googlemaps_service.dart';
 import 'package:greendrive/services/station_service.dart';
 
 class MapSection extends StatefulWidget {
@@ -24,11 +25,15 @@ class _MapSectionState extends State<MapSection> {
   String _currentFeature = '';
   final double _searchRadius = 10.0;
   bool _isLoading = false;
+  late final GoogleMapsService _googleMapsService;
+  Set<Marker> _googleMarkers = {};
+  Polyline? _selectedRoute;
 
   @override
   void initState() {
     super.initState();
     _stationService = ChargingStationService(AuthService());
+    _googleMapsService = GoogleMapsService();
     _getCurrentLocation();
   }
 
@@ -57,7 +62,7 @@ class _MapSectionState extends State<MapSection> {
 
       Position position = await Geolocator.getCurrentPosition();
       if (!mounted) return;
-      
+
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
       });
@@ -76,18 +81,15 @@ class _MapSectionState extends State<MapSection> {
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void toggleMapFeature(String feature) async {
@@ -114,40 +116,10 @@ class _MapSectionState extends State<MapSection> {
   Future<void> _loadNearbyChargers() async {
     setState(() => _isLoading = true);
     try {
-      _showMessage('Searching for nearby charging stations...');
-      
-      final stations = await _stationService.getNearbyStations(
-        _currentPosition.latitude,
-        _currentPosition.longitude,
-        _searchRadius
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _markers.clear();
-        for (final station in stations) {
-          _markers.add(
-            Marker(
-              markerId: MarkerId('station_${station.id}'),
-              position: LatLng(station.latitude, station.longitude),
-              infoWindow: InfoWindow(
-                title: station.name,
-                snippet: '${station.chargerType} - ${station.power}kW - \$${station.rate}/kWh',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                station.availability ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed
-              ),
-            ),
-          );
-        }
-      });
-
-      if (stations.isEmpty) {
-        _showMessage('No charging stations found nearby');
-      } else {
-        _showMessage('Found ${stations.length} charging stations');
-      }
+      await Future.wait([
+        _loadGoogleChargingStations(),
+        _loadApiChargingStations(),
+      ]);
     } catch (e) {
       if (!mounted) return;
       _showError('Error loading charging stations: $e');
@@ -155,6 +127,104 @@ class _MapSectionState extends State<MapSection> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _loadApiChargingStations() async {
+    final stations = await _stationService.getNearbyStations(
+      _currentPosition.latitude,
+      _currentPosition.longitude,
+      _searchRadius,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _markers.clear();
+      for (final station in stations) {
+        _markers.add(
+          Marker(
+            markerId: MarkerId('station_${station.id}'),
+            position: LatLng(station.latitude, station.longitude),
+            infoWindow: InfoWindow(
+              title: station.name,
+              snippet:
+                  '${station.chargerType} - ${station.power}kW - \$${station.rate}/kWh',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              station.availability
+                  ? BitmapDescriptor.hueGreen
+                  : BitmapDescriptor.hueRed,
+            ),
+            onTap:
+                () => _onMarkerTapped(
+                  LatLng(station.latitude, station.longitude),
+                ),
+          ),
+        );
+      }
+    });
+  }
+
+  Future<void> _loadGoogleChargingStations() async {
+    try {
+      final stations = await _googleMapsService.getNearbyChargingStations(
+        _currentPosition,
+        _searchRadius * 1000, // Convert km to meters
+      );
+
+      setState(() {
+        _googleMarkers.clear();
+        for (final station in stations) {
+          _googleMarkers.add(
+            Marker(
+              markerId: MarkerId('google_${station.placeId}'),
+              position: LatLng(
+                station.geometry!.location.lat,
+                station.geometry!.location.lng,
+              ),
+              infoWindow: InfoWindow(
+                title: station.name,
+                snippet: station.vicinity,
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueBlue,
+              ),
+              onTap:
+                  () => _onMarkerTapped(
+                    LatLng(
+                      station.geometry!.location.lat,
+                      station.geometry!.location.lng,
+                    ),
+                  ),
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      _showError('Error loading Google charging stations: $e');
+    }
+  }
+
+  Future<void> _onMarkerTapped(LatLng destination) async {
+    try {
+      final points = await _googleMapsService.getDirections(
+        _currentPosition,
+        destination,
+      );
+
+      setState(() {
+        _selectedRoute = Polyline(
+          polylineId: const PolylineId('selected_route'),
+          points: points,
+          color: Colors.blue,
+          width: 5,
+        );
+        _routes.clear();
+        _routes.add(_selectedRoute!);
+      });
+    } catch (e) {
+      _showError('Error calculating route: $e');
     }
   }
 
@@ -211,8 +281,12 @@ class _MapSectionState extends State<MapSection> {
         mainAxisSize: MainAxisSize.min,
         children: [
           CircleAvatar(
-            backgroundColor: isActive ? Colors.green.shade700 : Colors.grey.shade300,
-            child: Icon(icon, color: isActive ? Colors.white : Colors.grey.shade700),
+            backgroundColor:
+                isActive ? Colors.green.shade700 : Colors.grey.shade300,
+            child: Icon(
+              icon,
+              color: isActive ? Colors.white : Colors.grey.shade700,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -240,7 +314,7 @@ class _MapSectionState extends State<MapSection> {
             target: _currentPosition,
             zoom: 15.0,
           ),
-          markers: _markers,
+          markers: _markers.union(_googleMarkers),
           polylines: _routes,
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
@@ -248,10 +322,7 @@ class _MapSectionState extends State<MapSection> {
           mapType: MapType.normal,
         ),
         _buildMapControls(),
-        if (_isLoading)
-          const Center(
-            child: CircularProgressIndicator(),
-          ),
+        if (_isLoading) const Center(child: CircularProgressIndicator()),
         Positioned(
           right: 16,
           bottom: 16,
