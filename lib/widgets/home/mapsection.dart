@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:greendrive/model/station.dart';
 import 'package:greendrive/services/auth_services.dart';
 import 'package:greendrive/services/googlemaps_service.dart';
 import 'package:greendrive/services/station_service.dart';
@@ -116,6 +117,7 @@ class _MapSectionState extends State<MapSection> {
   Future<void> _loadNearbyChargers() async {
     setState(() => _isLoading = true);
     try {
+      _routes.clear();
       await Future.wait([
         _loadGoogleChargingStations(),
         _loadApiChargingStations(),
@@ -229,23 +231,236 @@ class _MapSectionState extends State<MapSection> {
   }
 
   Future<void> _findOptimalRoute() async {
-    // TODO: Implementar búsqueda de ruta óptima
-    setState(() {
-      _routes.clear();
-      // Agregar polylines para la ruta
-    });
+    setState(() => _isLoading = true);
+    try {
+      // Obtener todas las estaciones cercanas
+      final stations = await _stationService.getNearbyStations(
+        _currentPosition.latitude,
+        _currentPosition.longitude,
+        _searchRadius,
+      );
+
+      if (stations.isEmpty) {
+        _showError('No charging stations found nearby');
+        return;
+      }
+
+      // Encontrar la estación más cercana
+      var nearestStation = stations.reduce((curr, next) {
+        double currDist = Geolocator.distanceBetween(
+          _currentPosition.latitude,
+          _currentPosition.longitude,
+          curr.latitude,
+          curr.longitude,
+        );
+
+        double nextDist = Geolocator.distanceBetween(
+          _currentPosition.latitude,
+          _currentPosition.longitude,
+          next.latitude,
+          next.longitude,
+        );
+
+        return currDist < nextDist ? curr : next;
+      });
+
+      // Obtener la ruta hacia la estación más cercana
+      final route = await _googleMapsService.getDirections(
+        _currentPosition,
+        LatLng(nearestStation.latitude, nearestStation.longitude),
+      );
+
+      setState(() {
+        _routes.clear();
+        _routes.add(
+          Polyline(
+            polylineId: const PolylineId('optimal_route'),
+            points: route,
+            color: Colors.green,
+            width: 5,
+          ),
+        );
+
+        // Agregar marcador de la estación más cercana
+        _markers.clear();
+        _markers.add(
+          Marker(
+            markerId: MarkerId('nearest_${nearestStation.id}'),
+            position: LatLng(nearestStation.latitude, nearestStation.longitude),
+            infoWindow: InfoWindow(
+              title: nearestStation.name,
+              snippet: 'Nearest charging station',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueGreen,
+            ),
+          ),
+        );
+      });
+    } catch (e) {
+      _showError('Error finding optimal route: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadCommunityMarkers() async {
-    // TODO: Implementar carga de marcadores de la comunidad
-    setState(() {
-      _markers.clear();
-      // Agregar marcadores de la comunidad
-    });
+    setState(() => _isLoading = true);
+    try {
+      final topStations = await _stationService.getTopRatedStations(
+        _currentPosition.latitude,
+        _currentPosition.longitude,
+        _searchRadius * 2,
+      );
+
+      setState(() {
+        _markers.clear();
+        _routes.clear();
+
+        for (final station in topStations) {
+          _markers.add(
+            Marker(
+              markerId: MarkerId('community_${station.id}'),
+              position: LatLng(station.latitude, station.longitude),
+              infoWindow: InfoWindow(
+                title: '⭐ ${station.name}',
+                snippet:
+                    'Rating: ${station.rating.toStringAsFixed(1)}/5\n'
+                    '${station.reviewCount} reviews\n'
+                    '${station.totalCharges} total charges',
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                station.rating >= 4.5
+                    ? BitmapDescriptor.hueGreen
+                    : station.rating >= 4.0
+                    ? BitmapDescriptor.hueAzure
+                    : BitmapDescriptor.hueYellow,
+              ),
+            ),
+          );
+        }
+      });
+
+      if (topStations.isEmpty) {
+        _showMessage('No highly rated stations found in this area');
+      }
+    } catch (e) {
+      _showError('Error loading community markers: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
-  void _showStatsOverlay() {
-    // TODO: Implementar overlay de estadísticas
+  void _showStatsOverlay() async {
+    setState(() => _isLoading = true);
+    try {
+      final stats = await _stationService.getStationStats(
+        _currentPosition.latitude,
+        _currentPosition.longitude,
+        _searchRadius,
+      );
+
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        builder:
+            (context) => Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Charging Station Statistics',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildStatCard('Coverage Statistics', [
+                    _buildStatRow(
+                      'Total Stations',
+                      '${stats['totalStations']}',
+                    ),
+                    _buildStatRow(
+                      'Available Now',
+                      '${stats['availableStations']}',
+                    ),
+                    _buildStatRow(
+                      'Average Rating',
+                      '${(stats['avgRating'] as double).toStringAsFixed(1)}/5',
+                    ),
+                  ]),
+                  const SizedBox(height: 16),
+                  if (stats['topRated'] != null) ...[
+                    _buildStatCard('Top Rated Station', [
+                      _buildStatRow(
+                        'Name',
+                        (stats['topRated'] as ChargingStation).name,
+                      ),
+                      _buildStatRow(
+                        'Rating',
+                        '${(stats['topRated'] as ChargingStation).rating}/5',
+                      ),
+                    ]),
+                    const SizedBox(height: 16),
+                  ],
+                  if (stats['mostUsed'] != null) ...[
+                    _buildStatCard('Most Used Station', [
+                      _buildStatRow(
+                        'Name',
+                        (stats['mostUsed'] as ChargingStation).name,
+                      ),
+                      _buildStatRow(
+                        'Total Charges',
+                        '${(stats['mostUsed'] as ChargingStation).totalCharges}',
+                      ),
+                    ]),
+                  ],
+                ],
+              ),
+            ),
+      );
+    } catch (e) {
+      _showError('Error loading statistics: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildStatCard(String title, List<Widget> stats) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ...stats,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMapControls() {
