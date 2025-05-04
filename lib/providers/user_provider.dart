@@ -22,4 +22,6 @@ class UserProvider extends ChangeNotifier {
     _email = null;
     notifyListeners();
   }
+
+  bool get isLoggedIn => userId != null;
 }

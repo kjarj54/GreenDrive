@@ -32,6 +32,8 @@ class _MapSectionState extends State<MapSection> {
   bool _isLoading = false;
   late final GoogleMapsService _googleMapsService;
   Polyline? _selectedRoute;
+  ChargingStation? _selectedStation; // Propiedad para almacenar la estación seleccionada
+  bool _showStationDetails = false; // Controla la visibilidad del panel de detalles
 
   @override
   void initState() {
@@ -117,12 +119,6 @@ class _MapSectionState extends State<MapSection> {
     }
   }
 
-  // TODO: Implement method to show and handle advanced filters
-  // - Free charging stations
-  // - Available/Occupied status
-  // - Fast charging capabilities
-  // - Compatible charging types
-  // - Power output ranges
   Future<void> _showAdvancedFilters() async {
     bool? isFreeFilter;
     bool? isAvailableFilter;
@@ -289,27 +285,9 @@ class _MapSectionState extends State<MapSection> {
 
         setState(() {
           _markers.clear();
+          // Usar _createStationMarker para agregar marcadores filtrados
           for (final station in filteredStations) {
-            _markers.add(
-              Marker(
-                markerId: MarkerId('station_${station.id}'),
-                position: LatLng(station.latitude, station.longitude),
-                infoWindow: InfoWindow(
-                  title: station.name,
-                  snippet: '''
-Tipo: ${station.chargerType}
-Potencia: ${station.power}kW
-Tarifa: \$${station.rate}/kWh
-Disponible: ${station.availability ? 'Sí' : 'No'}
-''',
-                ),
-                icon: BitmapDescriptor.defaultMarkerWithHue(
-                  station.availability
-                      ? BitmapDescriptor.hueGreen
-                      : BitmapDescriptor.hueRed,
-                ),
-              ),
-            );
+            _markers.add(_createStationMarker(station: station));
           }
         });
 
@@ -324,11 +302,6 @@ Disponible: ${station.availability ? 'Sí' : 'No'}
     }
   }
 
-  // TODO: Implement method to show trip planner interface
-  // - Origin and destination selection
-  // - Vehicle range input
-  // - Consider vehicle range
-  // - Calculate optimal charging stops
   Future<void> _showTripPlanner() async {
     final vehicleService = VehicleService();
     Vehicle? selectedVehicle;
@@ -513,6 +486,7 @@ Disponible: ${station.availability ? 'Sí' : 'No'}
         );
 
         _markers.clear();
+        // Usar _createStationMarker para cada parada
         for (final stop in stops) {
           double deviationScore = _calculateDeviationScore(
             _currentPosition,
@@ -520,25 +494,13 @@ Disponible: ${station.availability ? 'Sí' : 'No'}
             routeData['destination'] as LatLng,
           );
 
-          _markers.add(
-            Marker(
-              markerId: MarkerId('stop_${stop.id}'),
-              position: LatLng(stop.latitude, stop.longitude),
-              infoWindow: InfoWindow(
-                title: stop.name,
-                snippet: '''
-Tipo: ${stop.chargerType}
-Potencia: ${stop.power}kW
-Tarifa: \$${stop.rate}/kWh
-Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
-''',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                _getMarkerHue(deviationScore),
-              ),
-            ),
-          );
+          _markers.add(_createStationMarker(
+            station: stop,
+            deviationScore: deviationScore,
+          ));
         }
+        
+        // Añadir el marcador de destino
         _markers.add(
           Marker(
             markerId: const MarkerId('destination'),
@@ -718,26 +680,7 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
     setState(() {
       _markers.clear();
       for (final station in stations) {
-        _markers.add(
-          Marker(
-            markerId: MarkerId('station_${station.id}'),
-            position: LatLng(station.latitude, station.longitude),
-            infoWindow: InfoWindow(
-              title: station.name,
-              snippet:
-                  '${station.chargerType} - ${station.power}kW - \$${station.rate}/kWh',
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              station.availability
-                  ? BitmapDescriptor.hueGreen
-                  : BitmapDescriptor.hueRed,
-            ),
-            onTap:
-                () => _onMarkerTapped(
-                  LatLng(station.latitude, station.longitude),
-                ),
-          ),
-        );
+        _markers.add(_createStationMarker(station: station));
       }
     });
   }
@@ -838,6 +781,55 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
     }
   }
 
+  // Función para crear un marcador para una estación de carga
+  Marker _createStationMarker({
+    required ChargingStation station,
+    String? customTitle,
+    String? customSnippet,
+    BitmapDescriptor? customIcon,
+    Function()? onTap,
+    double? deviationScore,
+  }) {
+    final position = LatLng(station.latitude, station.longitude);
+    
+    // Determinar el color del marcador según disponibilidad o desviación
+    BitmapDescriptor icon = customIcon ?? 
+      BitmapDescriptor.defaultMarkerWithHue(
+        deviationScore != null 
+          ? _getMarkerHue(deviationScore)
+          : (station.availability 
+              ? BitmapDescriptor.hueGreen 
+              : BitmapDescriptor.hueRed)
+      );
+    
+    // Construir el snippet con la información de la estación
+    final snippet = customSnippet ?? '''
+Tipo: ${station.chargerType}
+Potencia: ${station.power}kW
+Tarifa: \$${station.rate}/kWh
+${deviationScore != null ? 'Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%' : 
+  station.availability ? 'Disponible: Sí' : 'Disponible: No'}
+''';
+
+    return Marker(
+      markerId: MarkerId('station_${station.id}'),
+      position: position,
+      infoWindow: InfoWindow(
+        title: customTitle ?? station.name,
+        snippet: snippet,
+      ),
+      icon: icon,
+      onTap: onTap ?? () {
+        _onMarkerTapped(position);
+        // Almacenar la estación seleccionada y mostrar el panel de detalle
+        setState(() {
+          _selectedStation = station;
+          _showStationDetails = true;
+        });
+      },
+    );
+  }
+
   Widget _buildMapControls() {
     return Positioned(
       top: 16,
@@ -920,6 +912,130 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
             onPressed: _getCurrentLocation,
             backgroundColor: Colors.green.shade700,
             child: const Icon(Icons.my_location),
+          ),
+        ),
+        
+        // Panel de detalles de la estación
+        if (_showStationDetails && _selectedStation != null)
+          _buildStationDetailsPanel(),
+      ],
+    );
+  }
+  
+  // Widget para mostrar los detalles completos de la estación
+  Widget _buildStationDetailsPanel() {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              spreadRadius: 2,
+            )
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _selectedStation!.availability 
+                    ? Colors.green.shade700 
+                    : Colors.red.shade700,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedStation!.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => setState(() => _showStationDetails = false),
+                  )
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailRow('Dirección:', _selectedStation!.address),
+                  const SizedBox(height: 12),
+                  _buildDetailRow('Estado:', _selectedStation!.availability 
+                      ? 'Disponible ✅' 
+                      : 'No disponible ❌'),
+                  const SizedBox(height: 12),
+                  _buildDetailRow('Tipo de conector:', _selectedStation!.chargerType),
+                  const SizedBox(height: 12),
+                  _buildDetailRow('Potencia:', '${_selectedStation!.power} kW'),
+                  const SizedBox(height: 12),
+                  _buildDetailRow('Tarifa:', '\$${_selectedStation!.rate}/kWh'),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Aquí se podría implementar la funcionalidad para iniciar navegación
+                      final destLatLng = LatLng(_selectedStation!.latitude, _selectedStation!.longitude);
+                      _onMarkerTapped(destLatLng);
+                      // Opcional: cerrar panel después de iniciar navegación
+                      // setState(() => _showStationDetails = false);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 48),
+                    ),
+                    icon: const Icon(Icons.directions),
+                    label: const Text('Iniciar navegación'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Widget helper para crear filas de detalle consistentes
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 16),
           ),
         ),
       ],

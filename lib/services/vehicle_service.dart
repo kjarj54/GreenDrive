@@ -8,7 +8,7 @@ class VehicleService {
   static String get baseUrl {
     // You can add more platform-specific logic here
     if (Platform.isAndroid) {
-      return 'http://192.168.0.142:8080';
+      return 'http://10.0.2.2:8080';
     }
     return 'http://localhost:8080';
   }
