@@ -992,22 +992,6 @@ ${deviationScore != null ? 'Desviación: ${(deviationScore * 100 - 100).toString
                   const SizedBox(height: 12),
                   _buildDetailRow('Tarifa:', '\$${_selectedStation!.rate}/kWh'),
                   const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Aquí se podría implementar la funcionalidad para iniciar navegación
-                      final destLatLng = LatLng(_selectedStation!.latitude, _selectedStation!.longitude);
-                      _onMarkerTapped(destLatLng);
-                      // Opcional: cerrar panel después de iniciar navegación
-                      // setState(() => _showStationDetails = false);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 48),
-                    ),
-                    icon: const Icon(Icons.directions),
-                    label: const Text('Iniciar navegación'),
-                  ),
                 ],
               ),
             ),
