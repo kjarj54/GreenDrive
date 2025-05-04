@@ -221,7 +221,7 @@ class _FeedSectionState extends State<FeedSection> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          '${post.commentCount} comments',
+                                          'Comentarios',
                                           style: const TextStyle(color: Colors.blue),
                                         ),
                                       ],
