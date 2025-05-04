@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_google_maps_webservices/places.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:greendrive/model/station.dart';
@@ -32,7 +31,6 @@ class _MapSectionState extends State<MapSection> {
   final double _searchRadius = 10.0;
   bool _isLoading = false;
   late final GoogleMapsService _googleMapsService;
-  Set<Marker> _googleMarkers = {};
   Polyline? _selectedRoute;
 
   @override
@@ -133,7 +131,6 @@ class _MapSectionState extends State<MapSection> {
     RangeValues? powerRange;
     _routes.clear();
     _markers.clear();
-    _googleMarkers.clear();
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -471,12 +468,12 @@ Disponible: ${station.availability ? 'Sí' : 'No'}
     setState(() => _isLoading = true);
     try {
       _markers.clear();
-      _googleMarkers.clear();
       _routes.clear();
+
       final stations = await _stationService.getNearbyStations(
         _currentPosition.latitude,
         _currentPosition.longitude,
-        _searchRadius,
+        100.0,
       );
 
       final filteredStations =
@@ -491,7 +488,8 @@ Disponible: ${station.availability ? 'Sí' : 'No'}
         return;
       }
 
-      final potentialStops = _calculateChargingStops(
+      // Aquí usamos stops reales, no potentialStops
+      final stops = _calculateChargingStops(
         _currentPosition,
         routeData['destination'] as LatLng,
         filteredStations,
@@ -515,8 +513,7 @@ Disponible: ${station.availability ? 'Sí' : 'No'}
         );
 
         _markers.clear();
-        // Agregar marcadores para todas las paradas potenciales
-        for (final stop in potentialStops) {
+        for (final stop in stops) {
           double deviationScore = _calculateDeviationScore(
             _currentPosition,
             LatLng(stop.latitude, stop.longitude),
@@ -534,7 +531,7 @@ Tipo: ${stop.chargerType}
 Potencia: ${stop.power}kW
 Tarifa: \$${stop.rate}/kWh
 Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
-              ''',
+''',
               ),
               icon: BitmapDescriptor.defaultMarkerWithHue(
                 _getMarkerHue(deviationScore),
@@ -542,9 +539,27 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
             ),
           );
         }
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('destination'),
+            position: routeData['destination'] as LatLng,
+            infoWindow: const InfoWindow(title: 'Destino'),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueAzure,
+            ),
+          ),
+        );
       });
 
-      _showMessage('Found ${potentialStops.length} potential charging stops');
+      if (stops.isEmpty) {
+        _showMessage(
+          'No se requieren paradas intermedias. Puedes llegar directo al destino.',
+        );
+      } else {
+        _showMessage(
+          'Se requieren ${stops.length} paradas intermedias para llegar al destino.',
+        );
+      }
     } catch (e) {
       _showError('Error planning route: $e');
     } finally {
@@ -569,11 +584,15 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
     List<ChargingStation> potentialStops = [];
     double remainingRange = vehicleRange;
     LatLng currentPosition = start;
-    double searchRadiusKm = 5.0;
-    int maxPotentialStops =
-        10; // Número máximo de paradas potenciales por punto
+    double searchRadiusKm = 20.0;
+    const int maxPotentialStops = 10;
+    const int maxIterations = 20;
+    const double maxSearchRadiusKm = 60.0;
+    int iterations = 0;
 
-    while (true) {
+    while (iterations < maxIterations) {
+      iterations++;
+
       double distanceToEnd =
           Geolocator.distanceBetween(
             currentPosition.latitude,
@@ -583,12 +602,11 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
           ) /
           1000;
 
-      if (distanceToEnd <= remainingRange) {
-        break;
-      }
+      if (distanceToEnd <= remainingRange) break;
 
-      double optimalStopDistance = remainingRange * 0.8;
+      double optimalStopDistance = remainingRange * 0.7;
       double ratio = optimalStopDistance / distanceToEnd;
+
       LatLng idealPoint = LatLng(
         currentPosition.latitude +
             (end.latitude - currentPosition.latitude) * ratio,
@@ -596,7 +614,6 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
             (end.longitude - currentPosition.longitude) * ratio,
       );
 
-      // Encontrar estaciones cercanas al punto ideal
       List<ChargingStation> nearbyStations =
           stations.where((station) {
             double distanceToStation =
@@ -611,11 +628,14 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
           }).toList();
 
       if (nearbyStations.isEmpty) {
-        searchRadiusKm *= 1.5;
+        if (searchRadiusKm < maxSearchRadiusKm) {
+          searchRadiusKm *= 2;
+        } else {
+          break;
+        }
         continue;
       }
 
-      // Ordenar estaciones por score de desviación
       nearbyStations.sort((a, b) {
         double scoreA = _calculateDeviationScore(
           currentPosition,
@@ -630,19 +650,17 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
         return scoreA.compareTo(scoreB);
       });
 
-      // Tomar las mejores estaciones como paradas potenciales
       potentialStops.addAll(nearbyStations.take(maxPotentialStops));
 
-      // Usar la mejor estación como siguiente parada
       ChargingStation bestStation = nearbyStations.first;
       stops.add(bestStation);
 
       currentPosition = LatLng(bestStation.latitude, bestStation.longitude);
       remainingRange = vehicleRange;
-      searchRadiusKm = 5.0;
+      searchRadiusKm = 20.0;
     }
 
-    return potentialStops; // Retornar todas las paradas potenciales
+    return stops;
   }
 
   double _calculateDeviationScore(LatLng start, LatLng station, LatLng end) {
@@ -677,10 +695,7 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
     setState(() => _isLoading = true);
     try {
       _routes.clear();
-      await Future.wait([
-        _loadGoogleChargingStations(),
-        _loadApiChargingStations(),
-      ]);
+      await _loadApiChargingStations();
     } catch (e) {
       if (!mounted) return;
       _showError('Error loading charging stations: $e');
@@ -725,46 +740,6 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
         );
       }
     });
-  }
-
-  Future<void> _loadGoogleChargingStations() async {
-    try {
-      final stations = await _googleMapsService.getNearbyChargingStations(
-        _currentPosition,
-        _searchRadius * 1000, // Convert km to meters
-      );
-
-      setState(() {
-        _googleMarkers.clear();
-        for (final station in stations) {
-          _googleMarkers.add(
-            Marker(
-              markerId: MarkerId('google_${station.placeId}'),
-              position: LatLng(
-                station.geometry!.location.lat,
-                station.geometry!.location.lng,
-              ),
-              infoWindow: InfoWindow(
-                title: station.name,
-                snippet: station.vicinity,
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueBlue,
-              ),
-              onTap:
-                  () => _onMarkerTapped(
-                    LatLng(
-                      station.geometry!.location.lat,
-                      station.geometry!.location.lng,
-                    ),
-                  ),
-            ),
-          );
-        }
-      });
-    } catch (e) {
-      _showError('Error loading Google charging stations: $e');
-    }
   }
 
   Future<void> _onMarkerTapped(LatLng destination) async {
@@ -929,7 +904,7 @@ Desviación: ${(deviationScore * 100 - 100).toStringAsFixed(1)}%
             target: _currentPosition,
             zoom: 15.0,
           ),
-          markers: _markers.union(_googleMarkers),
+          markers: _markers,
           polylines: _routes,
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
