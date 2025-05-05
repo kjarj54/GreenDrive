@@ -5,7 +5,7 @@ class Comment {
   final String username;
   final String content;
   final DateTime date;
-  
+
   Comment({
     required this.id,
     required this.postId,
@@ -14,7 +14,7 @@ class Comment {
     required this.content,
     required this.date,
   });
-  
+
   factory Comment.fromJson(Map<String, dynamic> json) {
     return Comment(
       id: json['id'],
@@ -25,12 +25,8 @@ class Comment {
       date: DateTime.parse(json['fecha']),
     );
   }
-  
+
   Map<String, dynamic> toJson() {
-    return {
-      'publicacionId': postId,
-      'usuarioId': userId,
-      'contenido': content,
-    };
+    return {'publicacionId': postId, 'usuarioId': userId, 'contenido': content};
   }
 }

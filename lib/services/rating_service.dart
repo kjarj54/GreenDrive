@@ -11,12 +11,12 @@ class RatingService {
     }
     return 'http://localhost:8080';
   }
-  
+
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
-  
+
   // Obtener calificaciones de una estación
   Future<List<StationRating>> getRatingsByStation(int stationId) async {
     final token = await _getToken();
@@ -27,7 +27,7 @@ class RatingService {
         'Authorization': 'Bearer $token',
       },
     );
-    
+
     if (response.statusCode == 200) {
       List data = json.decode(response.body);
       return data.map((item) => StationRating.fromJson(item)).toList();
@@ -35,9 +35,14 @@ class RatingService {
       throw Exception('Failed to load ratings');
     }
   }
-  
+
   // Enviar una nueva calificación
-  Future<StationRating> addRating(int userId, int stationId, int rating, [String? comment]) async {
+  Future<StationRating> addRating(
+    int userId,
+    int stationId,
+    int rating, [
+    String? comment,
+  ]) async {
     final token = await _getToken();
     final response = await http.post(
       Uri.parse('$baseUrl/ratings'),
@@ -53,14 +58,14 @@ class RatingService {
         'fecha': DateTime.now().toIso8601String(),
       }),
     );
-    
+
     if (response.statusCode == 201) {
       return StationRating.fromJson(json.decode(response.body));
     } else {
       throw Exception('Failed to add rating');
     }
   }
-  
+
   // Eliminar una calificación
   Future<void> deleteRating(int ratingId) async {
     final token = await _getToken();
@@ -71,7 +76,7 @@ class RatingService {
         'Authorization': 'Bearer $token',
       },
     );
-    
+
     if (response.statusCode != 204) {
       throw Exception('Failed to delete rating');
     }

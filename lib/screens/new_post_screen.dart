@@ -3,7 +3,7 @@ import '../services/social_service.dart';
 
 class NewPostScreen extends StatefulWidget {
   final int userId;
-  
+
   const NewPostScreen({super.key, required this.userId});
 
   @override
@@ -17,18 +17,18 @@ class _NewPostScreenState extends State<NewPostScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   String _selectedCategory = 'General';
-  
+
   // Lista de categorías para posts de vehículos eléctricos
   final List<String> _categories = [
-    'General', 
-    'Consejos', 
-    'Experiencias', 
-    'Noticias', 
-    'Modelos de VE', 
-    'Carga', 
-    'Autonomía', 
+    'General',
+    'Consejos',
+    'Experiencias',
+    'Noticias',
+    'Modelos de VE',
+    'Carga',
+    'Autonomía',
     'Incentivos',
-    'Tecnología'
+    'Tecnología',
   ];
 
   @override
@@ -40,17 +40,17 @@ class _NewPostScreenState extends State<NewPostScreen> {
 
   Future<void> _submitPost() async {
     if (_formKey.currentState?.validate() != true) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       await _socialService.createPost(
         widget.userId,
         _titleController.text,
         _contentController.text,
-        _selectedCategory, // Incluimos la categoría seleccionada
+        _selectedCategory,
       );
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Post created successfully!')),
@@ -60,9 +60,9 @@ class _NewPostScreenState extends State<NewPostScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create post: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to create post: $e')));
       }
     }
   }
@@ -70,9 +70,7 @@ class _NewPostScreenState extends State<NewPostScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Post'),
-      ),
+      appBar: AppBar(title: const Text('New Post')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -87,12 +85,13 @@ class _NewPostScreenState extends State<NewPostScreen> {
                   labelText: 'Category',
                   border: OutlineInputBorder(),
                 ),
-                items: _categories.map((String category) {
-                  return DropdownMenuItem<String>(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
+                items:
+                    _categories.map((String category) {
+                      return DropdownMenuItem<String>(
+                        value: category,
+                        child: Text(category),
+                      );
+                    }).toList(),
                 onChanged: (String? newValue) {
                   if (newValue != null) {
                     setState(() {
@@ -137,16 +136,19 @@ class _NewPostScreenState extends State<NewPostScreen> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text('Create Post'),
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : const Text('Create Post'),
               ),
             ],
           ),

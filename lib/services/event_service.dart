@@ -11,8 +11,7 @@ class EventService {
     }
     return 'http://localhost:8080';
   }
-  
-  // Get all events
+
   Future<List<Event>> getEvents() async {
     final token = await _getToken();
     final response = await http.get(
@@ -22,7 +21,7 @@ class EventService {
         'Authorization': 'Bearer $token',
       },
     );
-    
+
     if (response.statusCode == 200) {
       List data = json.decode(response.body);
       return data.map((item) => Event.fromJson(item)).toList();
@@ -30,10 +29,10 @@ class EventService {
       throw Exception('Failed to load events');
     }
   }
-  
-  // Create an event
+
   Future<Event> createEvent(Event event) async {
     final token = await _getToken();
+    print(json.encode(event.toJson()));
     final response = await http.post(
       Uri.parse('$baseUrl/events'),
       headers: {
@@ -42,15 +41,44 @@ class EventService {
       },
       body: json.encode(event.toJson()),
     );
-    
+
     if (response.statusCode == 201) {
       return Event.fromJson(json.decode(response.body));
     } else {
       throw Exception('Failed to create event');
     }
   }
-  
-  // Register for an event
+
+  Future<void> updateGroupStatus(int eventId, String newStatus) async {
+    final token = await _getToken();
+    final response = await http.patch(
+      Uri.parse('$baseUrl/events/$eventId/status?newStatus=$newStatus'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update group status');
+    }
+  }
+
+  Future<void> updateEvent(Event event) async {
+    final token = await _getToken();
+    final response = await http.put(
+      Uri.parse('$baseUrl/events/${event.id}'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode(event.toJson()),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update event');
+    }
+  }
+
   Future<void> registerForEvent(int eventId, int userId) async {
     final token = await _getToken();
     final response = await http.post(
@@ -60,13 +88,39 @@ class EventService {
         'Authorization': 'Bearer $token',
       },
     );
-    
+
     if (response.statusCode != 201) {
       throw Exception('Failed to register for event');
     }
   }
-  
-  // Get event participants
+
+  Future<void> unregisterFromEvent(int eventId, int userId) async {
+    final token = await _getToken();
+
+    final participants = await getEventParticipants(eventId);
+    final userEntry = participants.firstWhere(
+      (p) => p['usuarioId'] == userId,
+      orElse: () => {},
+    );
+
+    if (userEntry.isEmpty || userEntry['id'] == null) {
+      throw Exception('User is not registered in this event.');
+    }
+
+    final id = userEntry['id'];
+    final response = await http.delete(
+      Uri.parse('$baseUrl/userEvents/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to unregister from event');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getEventParticipants(int eventId) async {
     final token = await _getToken();
     final response = await http.get(
@@ -76,7 +130,7 @@ class EventService {
         'Authorization': 'Bearer $token',
       },
     );
-    
+
     if (response.statusCode == 200) {
       List data = json.decode(response.body);
       return List<Map<String, dynamic>>.from(data);
@@ -84,8 +138,7 @@ class EventService {
       throw Exception('Failed to load participants');
     }
   }
-  
-  // Delete an event
+
   Future<void> deleteEvent(int eventId) async {
     final token = await _getToken();
     final response = await http.delete(
@@ -95,12 +148,12 @@ class EventService {
         'Authorization': 'Bearer $token',
       },
     );
-    
+
     if (response.statusCode != 204) {
       throw Exception('Failed to delete event');
     }
   }
-  
+
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('auth_token');

@@ -48,18 +48,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load comments: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load comments: $e')));
       }
     }
   }
 
   Future<void> _addComment(int userId) async {
     if (_formKey.currentState?.validate() != true) return;
-    
+
     setState(() => _isSubmitting = true);
-    
+
     try {
       await _socialService.addComment(
         widget.post.id,
@@ -70,9 +70,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       await _loadComments();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add comment: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add comment: $e')));
       }
     } finally {
       if (mounted) {
@@ -84,11 +84,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Post Details'),
-      ),
+      appBar: AppBar(title: const Text('Post Details')),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,9 +100,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   // Author info
                   Row(
                     children: [
-                      const CircleAvatar(
-                        child: Icon(Icons.person),
-                      ),
+                      const CircleAvatar(child: Icon(Icons.person)),
                       const SizedBox(width: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +110,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            DateFormat('MMM d, yyyy · HH:mm').format(widget.post.date),
+                            DateFormat(
+                              'MMM d, yyyy · HH:mm',
+                            ).format(widget.post.date),
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 12,
@@ -142,9 +140,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ],
               ),
             ),
-            
+
             const Divider(height: 32),
-            
+
             // Comments section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -159,7 +157,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Add comment form
                   if (userProvider.isLoggedIn)
                     Form(
@@ -183,87 +181,97 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           ),
                           const SizedBox(height: 8),
                           ElevatedButton(
-                            onPressed: _isSubmitting
-                                ? null
-                                : () => _addComment(userProvider.userId!),
+                            onPressed:
+                                _isSubmitting
+                                    ? null
+                                    : () => _addComment(userProvider.userId!),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green.shade600,
                             ),
-                            child: _isSubmitting
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : const Text('Post Comment'),
+                            child:
+                                _isSubmitting
+                                    ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                    : const Text('Post Comment'),
                           ),
                         ],
                       ),
                     ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Comments list
                   _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _comments.isEmpty
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(20.0),
-                                child: Text('No comments yet. Be the first to comment!'),
-                              ),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _comments.length,
-                              itemBuilder: (context, index) {
-                                final comment = _comments[index];
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const CircleAvatar(
-                                              radius: 16,
-                                              child: Icon(Icons.person, size: 16),
+                      ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Text(
+                            'No comments yet. Be the first to comment!',
+                          ),
+                        ),
+                      )
+                      : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _comments.length,
+                        itemBuilder: (context, index) {
+                          final comment = _comments[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const CircleAvatar(
+                                        radius: 16,
+                                        child: Icon(Icons.person, size: 16),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            comment.username,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                            const SizedBox(width: 8),
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  comment.username,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  DateFormat('MMM d, yyyy · HH:mm').format(comment.date),
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey.shade600,
-                                                  ),
-                                                ),
-                                              ],
+                                          ),
+                                          Text(
+                                            DateFormat(
+                                              'MMM d, yyyy · HH:mm',
+                                            ).format(comment.date),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
                                             ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(comment.content),
-                                      ],
-                                    ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                );
-                              },
+                                  const SizedBox(height: 8),
+                                  Text(comment.content),
+                                ],
+                              ),
                             ),
+                          );
+                        },
+                      ),
                 ],
               ),
             ),

@@ -43,7 +43,9 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
     });
 
     try {
-      final ratings = await _ratingService.getRatingsByStation(widget.station.id);
+      final ratings = await _ratingService.getRatingsByStation(
+        widget.station.id,
+      );
       setState(() {
         _ratings = ratings;
         _isLoading = false;
@@ -58,14 +60,14 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
 
   Future<void> _submitRating(int userId) async {
     if (_userRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a rating')));
       return;
     }
-    
+
     setState(() => _submitting = true);
-    
+
     try {
       await _ratingService.addRating(
         userId,
@@ -73,23 +75,23 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
         _userRating,
         _commentController.text.isEmpty ? null : _commentController.text,
       );
-      
+
       _commentController.clear();
       setState(() {
         _userRating = 0;
         _submitting = false;
       });
-      
+
       _loadRatings();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Rating submitted successfully')),
       );
     } catch (e) {
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit rating: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to submit rating: $e')));
     }
   }
 
@@ -98,11 +100,9 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
     final userProvider = Provider.of<UserProvider>(context);
     final isLoggedIn = userProvider.isLoggedIn;
     final userId = userProvider.userId;
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.station.name),
-      ),
+      appBar: AppBar(title: Text(widget.station.name)),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,25 +131,32 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildInfoItem(
-                        Icons.electric_bolt, 
+                        Icons.electric_bolt,
                         '${widget.station.power} kW',
-                        'Power'
+                        'Power',
                       ),
                       _buildInfoItem(
-                        Icons.ev_station, 
+                        Icons.ev_station,
                         widget.station.chargerType,
-                        'Type'
+                        'Type',
                       ),
                       _buildInfoItem(
-                        Icons.attach_money, 
+                        Icons.attach_money,
                         '\$${widget.station.rate.toStringAsFixed(2)}',
-                        'Rate'
+                        'Rate',
                       ),
                       _buildInfoItem(
-                        widget.station.availability ? Icons.check_circle : Icons.cancel, 
-                        widget.station.availability ? 'Available' : 'Unavailable',
+                        widget.station.availability
+                            ? Icons.check_circle
+                            : Icons.cancel,
+                        widget.station.availability
+                            ? 'Available'
+                            : 'Unavailable',
                         'Status',
-                        color: widget.station.availability ? Colors.green : Colors.red,
+                        color:
+                            widget.station.availability
+                                ? Colors.green
+                                : Colors.red,
                       ),
                     ],
                   ),
@@ -172,7 +179,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                 ],
               ),
             ),
-            
+
             // Sección de calificación
             if (isLoggedIn)
               Padding(
@@ -187,8 +194,8 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                         const Text(
                           'Rate this station',
                           style: TextStyle(
-                            fontSize: 18, 
-                            fontWeight: FontWeight.bold
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -197,7 +204,9 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                           children: List.generate(5, (index) {
                             return IconButton(
                               icon: Icon(
-                                index < _userRating ? Icons.star : Icons.star_border,
+                                index < _userRating
+                                    ? Icons.star
+                                    : Icons.star_border,
                                 color: Colors.amber,
                                 size: 36,
                               ),
@@ -222,16 +231,20 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _submitting 
-                                ? null 
-                                : () => _submitRating(userId ?? 0),
-                            child: _submitting
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Text('Submit Rating'),
+                            onPressed:
+                                _submitting
+                                    ? null
+                                    : () => _submitRating(userId ?? 0),
+                            child:
+                                _submitting
+                                    ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                    : const Text('Submit Rating'),
                           ),
                         ),
                       ],
@@ -239,7 +252,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                   ),
                 ),
               ),
-            
+
             // Lista de reseñas
             Padding(
               padding: const EdgeInsets.all(16),
@@ -248,10 +261,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                 children: [
                   const Text(
                     'Reviews',
-                    style: TextStyle(
-                      fontSize: 20, 
-                      fontWeight: FontWeight.bold
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   if (_isLoading)
@@ -290,14 +300,19 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       rating.username ?? 'Anonymous',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                     Text(
-                                      DateFormat('MMM d, yyyy').format(rating.date),
+                                      DateFormat(
+                                        'MMM d, yyyy',
+                                      ).format(rating.date),
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
                                         fontSize: 12,
@@ -309,8 +324,8 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                                 Row(
                                   children: List.generate(5, (starIndex) {
                                     return Icon(
-                                      starIndex < rating.rating 
-                                          ? Icons.star 
+                                      starIndex < rating.rating
+                                          ? Icons.star
                                           : Icons.star_border,
                                       color: Colors.amber,
                                       size: 18,
@@ -321,7 +336,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                                   const SizedBox(height: 8),
                                   Text(rating.comment!),
                                 ],
-                                
+
                                 // Opción de eliminar si el usuario es el autor
                                 if (userId == rating.userId)
                                   Align(
@@ -330,31 +345,54 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                                       onPressed: () async {
                                         final confirm = await showDialog<bool>(
                                           context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text('Delete Review'),
-                                            content: const Text('Are you sure you want to delete your review?'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context, false),
-                                                child: const Text('Cancel'),
+                                          builder:
+                                              (context) => AlertDialog(
+                                                title: const Text(
+                                                  'Delete Review',
+                                                ),
+                                                content: const Text(
+                                                  'Are you sure you want to delete your review?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed:
+                                                        () => Navigator.pop(
+                                                          context,
+                                                          false,
+                                                        ),
+                                                    child: const Text('Cancel'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed:
+                                                        () => Navigator.pop(
+                                                          context,
+                                                          true,
+                                                        ),
+                                                    child: const Text(
+                                                      'Delete',
+                                                      style: TextStyle(
+                                                        color: Colors.red,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context, true),
-                                                child: const Text('Delete', 
-                                                  style: TextStyle(color: Colors.red)),
-                                              ),
-                                            ],
-                                          ),
                                         );
-                                        
+
                                         if (confirm == true) {
                                           try {
-                                            await _ratingService.deleteRating(rating.id);
+                                            await _ratingService.deleteRating(
+                                              rating.id,
+                                            );
                                             _loadRatings();
                                           } catch (e) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
                                               SnackBar(
-                                                content: Text('Failed to delete review: $e'),
+                                                content: Text(
+                                                  'Failed to delete review: $e',
+                                                ),
                                               ),
                                             );
                                           }
@@ -381,21 +419,20 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String text, String label, {Color? color}) {
+  Widget _buildInfoItem(
+    IconData icon,
+    String text,
+    String label, {
+    Color? color,
+  }) {
     return Column(
       children: [
         Icon(icon, color: color, size: 28),
         const SizedBox(height: 4),
-        Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade700,
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
         ),
       ],
     );

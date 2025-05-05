@@ -6,9 +6,8 @@ class Event {
   final DateTime eventDate;
   final String location;
   final String status;
-  final DateTime creationDate;
   final int participantCount;
-  
+
   Event({
     required this.id,
     required this.creatorId,
@@ -17,10 +16,9 @@ class Event {
     required this.eventDate,
     required this.location,
     required this.status,
-    required this.creationDate,
     this.participantCount = 0,
   });
-  
+
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
       id: json['id'],
@@ -30,11 +28,10 @@ class Event {
       eventDate: DateTime.parse(json['fechaEvento']),
       location: json['ubicacion'] ?? '',
       status: json['estado'] ?? 'Activo',
-      creationDate: DateTime.parse(json['fechaCreacion']),
       participantCount: json['cantidadParticipantes'] ?? 0,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'usuarioCreadorId': creatorId,
@@ -44,5 +41,28 @@ class Event {
       'ubicacion': location,
       'estado': status,
     };
+  }
+
+  Event copyWith({
+    int? id,
+    int? creatorId,
+    String? title,
+    String? description,
+    DateTime? eventDate,
+    String? location,
+    String? status,
+    DateTime? creationDate,
+    int? participantCount,
+  }) {
+    return Event(
+      id: id ?? this.id,
+      creatorId: creatorId ?? this.creatorId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      eventDate: eventDate ?? this.eventDate,
+      location: location ?? this.location,
+      status: status ?? this.status,
+      participantCount: participantCount ?? this.participantCount,
+    );
   }
 }
