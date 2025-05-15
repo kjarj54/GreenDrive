@@ -5,8 +5,11 @@ import 'package:greendrive/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:greendrive/providers/user_provider.dart';
 import 'package:greendrive/services/notification_service.dart';
+import 'package:timezone/data/latest.dart' as tz;
+
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
   await NotificationService.init();
   runApp(
     MultiProvider(

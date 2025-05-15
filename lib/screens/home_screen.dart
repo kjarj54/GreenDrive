@@ -3,6 +3,7 @@ import 'package:greendrive/widgets/home/calculatorsection.dart';
 import 'package:greendrive/widgets/home/feedsection.dart';
 import 'package:greendrive/widgets/home/mapsection.dart';
 import 'package:greendrive/widgets/home/profilesection.dart';
+import 'package:greendrive/widgets/home/testsectionnotification.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const FeedSection(),
     const CalculatorSection(),
     const ProfileSection(),
+    const NotificationTestScreen(),
   ];
 
   @override
@@ -44,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Feed'),
           BottomNavigationBarItem(icon: Icon(Icons.calculate), label: 'Calculdora'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notificaciones'),
         ],
       ),
     );
