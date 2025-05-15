@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:greendrive/services/notification_service.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../model/post.dart';
@@ -55,24 +56,40 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
-  Future<void> _addComment(int userId) async {
+    Future<void> _addComment(int userId) async {
     if (_formKey.currentState?.validate() != true) return;
-
+  
     setState(() => _isSubmitting = true);
-
+  
     try {
-      await _socialService.addComment(
+      final comment = await _socialService.addComment(
         widget.post.id,
         userId,
         _commentController.text,
       );
       _commentController.clear();
       await _loadComments();
+      
+      if (mounted) {
+        // Mostrar SnackBar
+        NotificationService.showSuccessSnackBar(
+          context,
+          message: '¡Comentario publicado exitosamente!',
+        );
+        
+        // Mostrar notificación nativa
+        await NotificationService.showNotification(
+          title: 'Comentario publicado',
+          body: 'Tu comentario en "${widget.post.title}" ha sido publicado exitosamente',
+          payload: 'post_${widget.post.id}',
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        NotificationService.showErrorSnackBar(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to add comment: $e')));
+          message: 'No se pudo publicar el comentario: $e',
+        );
       }
     } finally {
       if (mounted) {

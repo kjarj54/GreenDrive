@@ -4,8 +4,10 @@ import 'package:greendrive/screens/login_screen.dart';
 import 'package:greendrive/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:greendrive/providers/user_provider.dart';
-
-void main() {
+import 'package:greendrive/services/notification_service.dart';
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init();
   runApp(
     MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => UserProvider())],

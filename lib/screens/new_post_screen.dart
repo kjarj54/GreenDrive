@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:greendrive/services/notification_service.dart';
 import '../services/social_service.dart';
 
 class NewPostScreen extends StatefulWidget {
@@ -44,7 +45,7 @@ class _NewPostScreenState extends State<NewPostScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _socialService.createPost(
+      final post = await _socialService.createPost(
         widget.userId,
         _titleController.text,
         _contentController.text,
@@ -52,17 +53,29 @@ class _NewPostScreenState extends State<NewPostScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post created successfully!')),
+        // Mostrar SnackBar
+        NotificationService.showSuccessSnackBar(
+          context,
+          message: '¡Publicación creada exitosamente!',
         );
+
+        // Mostrar notificación nativa
+        await NotificationService.showNotification(
+          title: 'Publicación creada',
+          body:
+              'Tu publicación "${_titleController.text}" ha sido creada exitosamente',
+          payload: 'post_${post.id}',
+        );
+
         Navigator.pop(context);
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(
+        NotificationService.showErrorSnackBar(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to create post: $e')));
+          message: 'No se pudo crear la publicación: $e',
+        );
       }
     }
   }
