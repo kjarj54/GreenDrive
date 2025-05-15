@@ -9,16 +9,19 @@ class NotificationService {
 
   // Inicializa el plugin de notificaciones
   static Future<void> init() async {
+    if (_isInitialized) return;
+
+    // For Android 13+ (API level 33+)
     final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
         _notificationsPlugin
             .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin
             >();
 
-    await androidImplementation?.requestPermission();
-    if (_isInitialized) return;
-
-    // Solicitar permisos para Android 13+ (API level 33+)
+    // Use the correct method to request permission
+    await androidImplementation?.requestNotificationsPermission();
+    
+    // Also request permission using permission_handler for better compatibility
     await Permission.notification.request();
 
     // Configuración para Android
