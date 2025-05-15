@@ -1,21 +1,14 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:greendrive/utils/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/event.dart';
 
 class EventService {
-  static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://localhost:8080';
-  }
-
   Future<List<Event>> getEvents() async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/events'),
+      Uri.parse('${ApiConfig.baseUrl}/events'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -34,7 +27,7 @@ class EventService {
     final token = await _getToken();
     print(json.encode(event.toJson()));
     final response = await http.post(
-      Uri.parse('$baseUrl/events'),
+      Uri.parse('${ApiConfig.baseUrl}/events'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -52,7 +45,9 @@ class EventService {
   Future<void> updateGroupStatus(int eventId, String newStatus) async {
     final token = await _getToken();
     final response = await http.patch(
-      Uri.parse('$baseUrl/events/$eventId/status?newStatus=$newStatus'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/events/$eventId/status?newStatus=$newStatus',
+      ),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -67,7 +62,7 @@ class EventService {
   Future<void> updateEvent(Event event) async {
     final token = await _getToken();
     final response = await http.put(
-      Uri.parse('$baseUrl/events/${event.id}'),
+      Uri.parse('${ApiConfig.baseUrl}/events/${event.id}'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -82,7 +77,9 @@ class EventService {
   Future<void> registerForEvent(int eventId, int userId) async {
     final token = await _getToken();
     final response = await http.post(
-      Uri.parse('$baseUrl/userEvents?eventoId=$eventId&usuarioId=$userId'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/userEvents?eventoId=$eventId&usuarioId=$userId',
+      ),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -109,7 +106,7 @@ class EventService {
 
     final id = userEntry['id'];
     final response = await http.delete(
-      Uri.parse('$baseUrl/userEvents/$id'),
+      Uri.parse('${ApiConfig.baseUrl}/userEvents/$id'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -124,7 +121,7 @@ class EventService {
   Future<List<Map<String, dynamic>>> getEventParticipants(int eventId) async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/userEvents/event/$eventId'),
+      Uri.parse('${ApiConfig.baseUrl}/userEvents/event/$eventId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -142,7 +139,7 @@ class EventService {
   Future<void> deleteEvent(int eventId) async {
     final token = await _getToken();
     final response = await http.delete(
-      Uri.parse('$baseUrl/events/$eventId'),
+      Uri.parse('${ApiConfig.baseUrl}/events/$eventId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

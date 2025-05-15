@@ -1,23 +1,16 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:greendrive/utils/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/post.dart';
 import '../model/comment.dart';
 
 class SocialService {
-  static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://localhost:8080';
-  }
-
   // Fetch all posts
   Future<List<Post>> getPosts() async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/post'),
+      Uri.parse('${ApiConfig.baseUrl}/post'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -41,7 +34,7 @@ class SocialService {
   ) async {
     final token = await _getToken();
     final response = await http.post(
-      Uri.parse('$baseUrl/post'),
+      Uri.parse('${ApiConfig.baseUrl}/post'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -65,7 +58,7 @@ class SocialService {
   Future<List<Comment>> getComments(int postId) async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/comments/post/$postId'),
+      Uri.parse('${ApiConfig.baseUrl}/comments/post/$postId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -84,7 +77,7 @@ class SocialService {
   Future<Comment> addComment(int postId, int userId, String content) async {
     final token = await _getToken();
     final response = await http.post(
-      Uri.parse('$baseUrl/comments'),
+      Uri.parse('${ApiConfig.baseUrl}/comments'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -107,7 +100,7 @@ class SocialService {
   Future<void> deletePost(int postId) async {
     final token = await _getToken();
     final response = await http.delete(
-      Uri.parse('$baseUrl/post/$postId'),
+      Uri.parse('${ApiConfig.baseUrl}/post/$postId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -127,7 +120,7 @@ class SocialService {
   Future<List<Post>> getPostsByCategory(String category) async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/post/category/$category'),
+      Uri.parse('${ApiConfig.baseUrl}/post/category/$category'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

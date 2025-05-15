@@ -1,22 +1,15 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:greendrive/model/vehicle.dart';
+import 'package:greendrive/utils/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class VehicleService {
-  static String get baseUrl {
-    // You can add more platform-specific logic here
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://localhost:8080';
-  }
 
   Future<List<Vehicle>> fetchCatalog() async {
     final token = await _getToken();
     final resp = await http.get(
-      Uri.parse('$baseUrl/vehicleCatalog'),
+      Uri.parse('${ApiConfig.baseUrl}/vehicleCatalog'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -33,7 +26,7 @@ class VehicleService {
   Future<void> registerVehicle(int userId, int vehiculoId) async {
     final token = await _getToken();
     final resp = await http.put(
-      Uri.parse('$baseUrl/user/$userId/assign-vehicle/$vehiculoId'),
+      Uri.parse('${ApiConfig.baseUrl}/user/$userId/assign-vehicle/$vehiculoId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -47,7 +40,7 @@ class VehicleService {
   Future<Vehicle?> fetchCurrentVehicle(int userId) async {
     final token = await _getToken();
     final resp = await http.get(
-      Uri.parse('$baseUrl/user/$userId'),
+      Uri.parse('${ApiConfig.baseUrl}/user/$userId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

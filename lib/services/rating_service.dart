@@ -1,17 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:greendrive/utils/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/rating.dart';
 
 class RatingService {
-  static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://localhost:8080';
-  }
-
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
@@ -21,7 +14,7 @@ class RatingService {
   Future<List<StationRating>> getRatingsByStation(int stationId) async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/ratings/station/$stationId'),
+      Uri.parse('${ApiConfig.baseUrl}/ratings/station/$stationId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -45,7 +38,7 @@ class RatingService {
   ]) async {
     final token = await _getToken();
     final response = await http.post(
-      Uri.parse('$baseUrl/ratings'),
+      Uri.parse('${ApiConfig.baseUrl}/ratings'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -70,7 +63,7 @@ class RatingService {
   Future<void> deleteRating(int ratingId) async {
     final token = await _getToken();
     final response = await http.delete(
-      Uri.parse('$baseUrl/ratings/$ratingId'),
+      Uri.parse('${ApiConfig.baseUrl}/ratings/$ratingId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

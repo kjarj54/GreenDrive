@@ -1,23 +1,16 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:greendrive/model/user.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:greendrive/utils/api_config.dart';
 
 class AuthService {
-  static String get baseUrl {
-    // You can add more platform-specific logic here
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://localhost:8080';
-  }
   static const String tokenKey = 'auth_token';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/user/login'),
+        Uri.parse('${ApiConfig.baseUrl}/user/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'correo': email, 'contrasena': password}),
       );
@@ -39,7 +32,7 @@ class AuthService {
   Future<User> verifyOTP(int usuarioId, String codigo) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/otp/verify'),
+        Uri.parse('${ApiConfig.baseUrl}/otp/verify'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'usuarioId': usuarioId, 'codigo': codigo}),
       );
@@ -50,6 +43,7 @@ class AuthService {
 
         if (user.token != null) {
           await _saveToken(user.token!);
+          await _saveUserData(user);
         } else {
           throw Exception('Token no encontrado en la respuesta');
         }
@@ -64,30 +58,10 @@ class AuthService {
     }
   }
 
-  Future<void> logout() async {
-    await _removeToken();
-  }
-
-  Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(tokenKey);
-  }
-
-  Future<void> _saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(tokenKey, token);
-  }
-
-  Future<void> _removeToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(tokenKey);
-  }
-
-
   Future<User> register(String nombre, String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/user'),
+        Uri.parse('${ApiConfig.baseUrl}/user'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'nombre': nombre,
@@ -107,5 +81,30 @@ class AuthService {
       print('Error in registration: $e');
       rethrow;
     }
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(tokenKey);
+    await prefs.remove('userId');
+    await prefs.remove('name');
+    await prefs.remove('email');
+  }
+
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(tokenKey);
+  }
+
+  Future<void> _saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(tokenKey, token);
+  }
+
+  Future<void> _saveUserData(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('userId', user.id);
+    await prefs.setString('name', user.name);
+    await prefs.setString('email', user.email);
   }
 }
