@@ -7,6 +7,7 @@ import 'package:greendrive/model/station.dart';
 import 'package:greendrive/model/vehicle.dart';
 import 'package:greendrive/services/auth_services.dart';
 import 'package:greendrive/services/googlemaps_service.dart';
+import 'package:greendrive/services/notification_service.dart';
 import 'package:greendrive/services/station_service.dart';
 import 'package:greendrive/services/vehicle_service.dart';
 
@@ -501,7 +502,6 @@ class _MapSectionState extends State<MapSection> {
       await _planRouteWithStops(result);
     }
   }
-
   Future<void> _planRouteWithStops(Map<String, dynamic> routeData) async {
   setState(() => _isLoading = true);
   try {
@@ -551,10 +551,21 @@ class _MapSectionState extends State<MapSection> {
       ));
     });
 
+    // Calcular distancia total de la ruta
+    double totalDistanceKm = _calculateRouteDistance(routeWithStops);
+    
     if (stops.isEmpty) {
       _showMessage('No se requieren paradas intermedias. Puedes llegar directo.');
     } else {
       _showMessage('Se requieren ${stops.length} paradas intermedias.');
+    }
+    
+    // Si el viaje es largo (mayor a 50km), mostrar recordatorio de carga
+    if (totalDistanceKm > 50) {
+      // Mostrar recordatorio de carga después de que se complete el cálculo de ruta
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _showChargingReminder(totalDistanceKm);
+      });
     }
   } catch (e) {
     _showError('Error planning route: $e');
@@ -688,11 +699,19 @@ class _MapSectionState extends State<MapSection> {
         _routes.clear();
         _routes.add(_selectedRoute!);
       });
+      
+      // Calcular distancia total de la ruta
+      double totalDistanceKm = _calculateRouteDistance(points);
+      
+      // Si el viaje es largo (mayor a 50km), mostrar recordatorio de carga
+      if (totalDistanceKm > 50) {
+        // Mostrar recordatorio de carga
+        _showChargingReminder(totalDistanceKm);
+      }
     } catch (e) {
       _showError('Error calculating route: $e');
     }
   }
-
   Future<void> _findOptimalRoute() async {
     setState(() => _isLoading = true);
     try {
@@ -760,6 +779,55 @@ class _MapSectionState extends State<MapSection> {
           ),
         );
       });
+      
+      // Calcular distancia total hasta la estación
+      double totalDistanceKm = _calculateRouteDistance(route);
+      
+      // Si la distancia a la estación es significativa (> 20km), recordar verificar el nivel de carga
+      if (totalDistanceKm > 20) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Verificación de carga'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.battery_charging_full,
+                      color: Colors.green,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'La estación de carga está a ${totalDistanceKm.toStringAsFixed(1)} km.',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Asegúrate de tener suficiente batería para llegar a la estación.',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                actions: <Widget>[
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                    ),
+                    child: const Text('Entendido'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        });
+      }
     } catch (e) {
       _showError('Error finding optimal route: $e');
     } finally {
@@ -822,6 +890,94 @@ ${deviationScore != null
             });
           },
     );
+  }
+
+  // Método para calcular la distancia total de una ruta en kilómetros
+  double _calculateRouteDistance(List<LatLng> points) {
+    double totalDistance = 0;
+    for (int i = 0; i < points.length - 1; i++) {
+      totalDistance += Geolocator.distanceBetween(
+        points[i].latitude,
+        points[i].longitude,
+        points[i + 1].latitude,
+        points[i + 1].longitude,
+      );
+    }
+    // Convertir de metros a kilómetros
+    return totalDistance / 1000;
+  }
+  
+  // Método para mostrar el recordatorio de carga
+  void _showChargingReminder(double distanceKm) {
+    // Mostrar diálogo de confirmación
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Recordatorio de carga'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.battery_alert,
+                color: Colors.amber,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Has planificado un viaje largo de ${distanceKm.toStringAsFixed(1)} km.',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '¡No olvides cargar completamente tu vehículo antes de emprender el viaje!',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Recordármelo más tarde'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Programar un recordatorio para 1 hora después
+                _scheduleReminderNotification(distanceKm);
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+              ),
+              child: const Text('Entendido'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  // Método para programar una notificación de recordatorio
+  Future<void> _scheduleReminderNotification(double distanceKm) async {
+    try {
+      // Programar recordatorio para 1 hora después
+      final tripDate = DateTime.now().add(const Duration(hours: 2)); // Supongamos que el viaje es en 2 horas
+      final reminderBefore = const Duration(hours: 1); // Recordatorio 1 hora antes
+      
+      await NotificationService.scheduleChargingReminder(
+        destination: 'tu destino planificado',
+        distanceKm: distanceKm,
+        tripDate: tripDate,
+        reminderBefore: reminderBefore,
+      );
+      
+      _showMessage('Se te recordará cargar tu vehículo una hora antes del viaje');
+    } catch (e) {
+      _showError('Error al programar la notificación: $e');
+    }
   }
 
   Widget _buildMapControls() {

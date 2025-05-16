@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:greendrive/screens/group_list_screen.dart';
 import 'package:greendrive/screens/new_post_screen.dart';
 import 'package:greendrive/screens/post_detail_screen.dart';
+import 'package:greendrive/screens/station_list_screen.dart';
 import 'package:provider/provider.dart';
 import '../../model/post.dart';
 import '../../services/social_service.dart';
@@ -90,8 +91,7 @@ class _FeedSectionState extends State<FeedSection> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('EV Community'),
+      appBar: AppBar(        title: const Text('EV Community'),
         centerTitle: false,
         actions: [
           IconButton(
@@ -102,6 +102,18 @@ class _FeedSectionState extends State<FeedSection> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const GroupListScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.ev_station),
+            tooltip: 'Estaciones de carga',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const StationListScreen(),
                 ),
               );
             },
