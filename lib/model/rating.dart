@@ -16,7 +16,6 @@ class StationRating {
     required this.date,
     this.username,
   });
-
   factory StationRating.fromJson(Map<String, dynamic> json) {
     return StationRating(
       id: json['id'],

@@ -92,8 +92,7 @@ class _StationListScreenState extends State<StationListScreen> {
         _stations = stations;
         _filterStations();
         _isLoading = false;
-      });
-    } catch (e) {
+      });    } catch (e) {
       setState(() {
         _error = 'Error al cargar las estaciones: $e';
         _isLoading = false;

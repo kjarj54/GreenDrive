@@ -8,9 +8,7 @@ import 'package:greendrive/utils/api_config.dart';
 class ChargingStationService {
   final AuthService _authService;
 
-  ChargingStationService(this._authService);
-
-  Future<List<ChargingStation>> getNearbyStations(
+  ChargingStationService(this._authService);  Future<List<ChargingStation>> getNearbyStations(
     double lat,
     double lng,
     double radius,

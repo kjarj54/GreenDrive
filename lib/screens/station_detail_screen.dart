@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../model/station.dart';
 import '../model/rating.dart';
 import '../services/rating_service.dart';
+import '../services/auth_services.dart';
 import '../providers/user_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -16,9 +17,11 @@ class StationDetailScreen extends StatefulWidget {
 }
 
 class _StationDetailScreenState extends State<StationDetailScreen> {
-  final RatingService _ratingService = RatingService();
+  final AuthService _authService = AuthService();
+  late final RatingService _ratingService;
   List<StationRating> _ratings = [];
-  bool _isLoading = true;
+  bool _isLoading = false;
+  bool _ratingsLoaded = false;
   String _error = '';
   int _userRating = 0;
   final _commentController = TextEditingController();
@@ -27,28 +30,26 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRatings();
+    _ratingService = RatingService(_authService);
+    // No cargar las reseñas automáticamente
   }
 
   @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadRatings() async {
+  }  Future<void> _loadRatings() async {
     setState(() {
       _isLoading = true;
       _error = '';
     });
 
     try {
-      final ratings = await _ratingService.getRatingsByStation(
-        widget.station.id,
-      );
+      final ratings = await _ratingService.getRatingsByStation(widget.station.id);
       setState(() {
         _ratings = ratings;
         _isLoading = false;
+        _ratingsLoaded = true;
       });
     } catch (e) {
       setState(() {
@@ -57,8 +58,20 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
       });
     }
   }
+  Future<void> _loadRatingsIfNeeded() async {
+    if (_ratingsLoaded) return; // No recargar si ya están cargadas
+    await _loadRatings();
+  }  double _calculateAverageRating() {
+    // Siempre usar la calificación de la estación que viene del backend
+    // El backend ya calcula el promedio correctamente incluyendo todas las calificaciones
+    return widget.station.rating;
+  }
 
-  Future<void> _submitRating(int userId) async {
+  int _getRatingCount() {
+    // Siempre usar el conteo de la estación que viene del backend
+    // El backend ya cuenta correctamente todas las calificaciones
+    return widget.station.reviewCount;
+  }  Future<void> _submitRating(int userId) async {
     if (_userRating == 0) {
       ScaffoldMessenger.of(
         context,
@@ -169,9 +182,8 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                   Row(
                     children: [
                       const Icon(Icons.star, color: Colors.amber),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${widget.station.rating.toStringAsFixed(1)} (${widget.station.reviewCount} reviews)',
+                      const SizedBox(width: 4),                      Text(
+                        '${_calculateAverageRating().toStringAsFixed(1)} (${_getRatingCount()} reviews)',
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],
@@ -251,164 +263,168 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                     ),
                   ),
                 ),
-              ),
-
-            // Lista de reseñas
+              ),            // Lista de reseñas con carga lazy
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: ExpansionTile(
+                title: const Text(
+                  'Reviews',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text('${_getRatingCount()} reviews'),                onExpansionChanged: (expanded) {
+                  if (expanded && !_ratingsLoaded) {
+                    _loadRatingsIfNeeded();
+                  }
+                },
                 children: [
-                  const Text(
-                    'Reviews',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
                   if (_isLoading)
                     const Center(child: CircularProgressIndicator())
                   else if (_error.isNotEmpty)
                     Center(
                       child: Column(
                         children: [
-                          Text(_error),
-                          ElevatedButton(
-                            onPressed: _loadRatings,
+                          Text(_error),                          ElevatedButton(
+                            onPressed: () {
+                              setState(() => _ratingsLoaded = false);
+                              _loadRatingsIfNeeded();
+                            },
                             child: const Text('Retry'),
                           ),
                         ],
                       ),
                     )
-                  else if (_ratings.isEmpty)
+                  else if (_ratings.isEmpty && _ratingsLoaded)
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16),
                         child: Text('No reviews yet. Be the first to review!'),
                       ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _ratings.length,
-                      itemBuilder: (context, index) {
-                        final rating = _ratings[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                    )                  else
+                    Column(
+                      children: [
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _ratings.length,
+                          itemBuilder: (context, index) {
+                            final rating = _ratings[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      rating.username ?? 'Anonymous',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          rating.username ?? 'Anonymous',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          DateFormat(
+                                            'MMM d, yyyy',
+                                          ).format(rating.date),
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      DateFormat(
-                                        'MMM d, yyyy',
-                                      ).format(rating.date),
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12,
-                                      ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: List.generate(5, (starIndex) {
+                                        return Icon(
+                                          starIndex < rating.rating
+                                              ? Icons.star
+                                              : Icons.star_border,
+                                          color: Colors.amber,
+                                          size: 18,
+                                        );
+                                      }),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: List.generate(5, (starIndex) {
-                                    return Icon(
-                                      starIndex < rating.rating
-                                          ? Icons.star
-                                          : Icons.star_border,
-                                      color: Colors.amber,
-                                      size: 18,
-                                    );
-                                  }),
-                                ),
-                                if (rating.comment != null) ...[
-                                  const SizedBox(height: 8),
-                                  Text(rating.comment!),
-                                ],
+                                    if (rating.comment != null) ...[
+                                      const SizedBox(height: 8),
+                                      Text(rating.comment!),
+                                    ],
 
-                                // Opción de eliminar si el usuario es el autor
-                                if (userId == rating.userId)
-                                  Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: TextButton(
-                                      onPressed: () async {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder:
-                                              (context) => AlertDialog(
-                                                title: const Text(
-                                                  'Delete Review',
-                                                ),
-                                                content: const Text(
-                                                  'Are you sure you want to delete your review?',
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed:
-                                                        () => Navigator.pop(
-                                                          context,
-                                                          false,
-                                                        ),
-                                                    child: const Text('Cancel'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed:
-                                                        () => Navigator.pop(
-                                                          context,
-                                                          true,
-                                                        ),
-                                                    child: const Text(
-                                                      'Delete',
-                                                      style: TextStyle(
-                                                        color: Colors.red,
+                                    // Opción de eliminar si el usuario es el autor
+                                    if (userId == rating.userId)
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: TextButton(
+                                          onPressed: () async {
+                                            final confirm = await showDialog<bool>(
+                                              context: context,
+                                              builder:
+                                                  (context) => AlertDialog(
+                                                    title: const Text(
+                                                      'Delete Review',
+                                                    ),
+                                                    content: const Text(
+                                                      'Are you sure you want to delete your review?',
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed:
+                                                            () => Navigator.pop(
+                                                              context,
+                                                              false,
+                                                            ),
+                                                        child: const Text('Cancel'),
                                                       ),
+                                                      TextButton(
+                                                        onPressed:
+                                                            () => Navigator.pop(
+                                                              context,
+                                                              true,
+                                                            ),
+                                                        child: const Text(
+                                                          'Delete',
+                                                          style: TextStyle(
+                                                            color: Colors.red,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                            );                                            if (confirm == true) {
+                                              try {
+                                                await _ratingService.deleteRating(
+                                                  rating.id,
+                                                );
+                                                setState(() => _ratingsLoaded = false);
+                                                await _loadRatings();
+                                              } catch (e) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Failed to delete review: $e',
                                                     ),
                                                   ),
-                                                ],
-                                              ),
-                                        );
-
-                                        if (confirm == true) {
-                                          try {
-                                            await _ratingService.deleteRating(
-                                              rating.id,
-                                            );
-                                            _loadRatings();
-                                          } catch (e) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  'Failed to delete review: $e',
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                                                );
+                                              }
+                                            }
+                                          },
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.red,
+                                          ),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ),                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                 ],
               ),

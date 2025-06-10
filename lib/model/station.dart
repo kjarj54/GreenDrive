@@ -31,9 +31,7 @@ class ChargingStation {
     this.reviews = const [],
     this.totalCharges = 0,
     DateTime? lastUpdated,
-  }) : this.lastUpdated = lastUpdated ?? DateTime.now();
-
-  factory ChargingStation.fromJson(Map<String, dynamic> json) {
+  }) : this.lastUpdated = lastUpdated ?? DateTime.now();  factory ChargingStation.fromJson(Map<String, dynamic> json) {
     return ChargingStation(
       id: json['id'] as int,
       name: json['nombre'] as String,

@@ -1,20 +1,23 @@
 import 'dart:convert';
 import 'package:greendrive/utils/api_config.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../model/rating.dart';
+import 'auth_services.dart';
 
 class RatingService {
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
+  final AuthService _authService;
+
+  RatingService(this._authService);
 
   // Obtener calificaciones de una estación
   Future<List<StationRating>> getRatingsByStation(int stationId) async {
-    final token = await _getToken();
+    final token = await _authService.getToken();
+    if (token == null) {
+      throw Exception('No authentication token');
+    }
+
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/ratings/station/$stationId'),
+      Uri.parse('${ApiConfig.baseUrl}/api/calificaciones-estaciones/estacion/$stationId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -28,7 +31,6 @@ class RatingService {
       throw Exception('Failed to load ratings');
     }
   }
-
   // Enviar una nueva calificación
   Future<StationRating> addRating(
     int userId,
@@ -36,9 +38,11 @@ class RatingService {
     int rating, [
     String? comment,
   ]) async {
-    final token = await _getToken();
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/ratings'),
+    final token = await _authService.getToken();
+    if (token == null) {
+      throw Exception('No authentication token');
+    }    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/calificaciones-estaciones'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -48,7 +52,6 @@ class RatingService {
         'estacionId': stationId,
         'calificacion': rating,
         'comentario': comment,
-        'fecha': DateTime.now().toIso8601String(),
       }),
     );
 
@@ -57,13 +60,15 @@ class RatingService {
     } else {
       throw Exception('Failed to add rating');
     }
-  }
-
-  // Eliminar una calificación
+  }  // Eliminar una calificación
   Future<void> deleteRating(int ratingId) async {
-    final token = await _getToken();
+    final token = await _authService.getToken();
+    if (token == null) {
+      throw Exception('No authentication token');
+    }
+
     final response = await http.delete(
-      Uri.parse('${ApiConfig.baseUrl}/ratings/$ratingId'),
+      Uri.parse('${ApiConfig.baseUrl}/api/calificaciones-estaciones/$ratingId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
