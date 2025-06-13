@@ -32,6 +32,15 @@ class ChargingStation {
     this.totalCharges = 0,
     DateTime? lastUpdated,
   }) : this.lastUpdated = lastUpdated ?? DateTime.now();  factory ChargingStation.fromJson(Map<String, dynamic> json) {
+    // Debug: imprimir los datos que llegan del backend
+    print('=== DEBUG ChargingStation.fromJson ===');
+    print('Station ID: ${json['id']}');
+    print('Station Name: ${json['nombre']}');
+    print('Raw calificacion: ${json['calificacion']} (type: ${json['calificacion'].runtimeType})');
+    print('Raw cantidadResenas: ${json['cantidadResenas']} (type: ${json['cantidadResenas'].runtimeType})');
+    print('Full JSON: $json');
+    print('======================================');
+    
     return ChargingStation(
       id: json['id'] as int,
       name: json['nombre'] as String,

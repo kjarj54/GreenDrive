@@ -24,11 +24,14 @@ class ChargingStationService {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
-
-    if (response.statusCode != 200) {
+    );    if (response.statusCode != 200) {
       throw Exception('Failed to load stations');
     }
+
+    print('=== DEBUG StationService Response ===');
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('====================================');
 
     final List<dynamic> data = json.decode(response.body);
     final stations = data.map((j) => ChargingStation.fromJson(j)).toList();

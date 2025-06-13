@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:greendrive/model/station.dart';
-import 'package:greendrive/providers/user_provider.dart';
 import 'package:greendrive/screens/station_detail_screen.dart';
 import 'package:greendrive/services/auth_services.dart';
 import 'package:greendrive/services/station_service.dart';
-import 'package:provider/provider.dart';
 
 class StationListScreen extends StatefulWidget {
   const StationListScreen({Key? key}) : super(key: key);
@@ -228,14 +226,17 @@ class _StationListScreenState extends State<StationListScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 16.0),
                         elevation: 2,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
+                        child: InkWell(                          onTap: () async {
+                            final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => StationDetailScreen(station: station),
                               ),
-                            ).then((_) => _loadStations());
+                            );
+                            // Solo recargar si se agregó una nueva calificación
+                            if (result == true) {
+                              _loadStations();
+                            }
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -328,8 +329,7 @@ class _StationListScreenState extends State<StationListScreen> {
                                         ),
                                       ],
                                     ),
-                                    
-                                    // Calificación
+                                      // Calificación
                                     Row(
                                       children: [
                                         const Icon(
@@ -337,11 +337,22 @@ class _StationListScreenState extends State<StationListScreen> {
                                           size: 16,
                                           color: Colors.amber,
                                         ),
-                                        Text(
-                                          ' ${station.rating.toStringAsFixed(1)} (${station.reviewCount})',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade800,
-                                          ),
+                                        Builder(
+                                          builder: (context) {
+                                            // Debug: imprimir valores antes de mostrar
+                                            print('=== DEBUG Station Display ===');
+                                            print('Station: ${station.name}');
+                                            print('Rating: ${station.rating}');
+                                            print('ReviewCount: ${station.reviewCount}');
+                                            print('===========================');
+                                            
+                                            return Text(
+                                              ' ${station.rating.toStringAsFixed(1)} (${station.reviewCount})',
+                                              style: TextStyle(
+                                                color: Colors.grey.shade800,
+                                              ),
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),

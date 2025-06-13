@@ -4,6 +4,7 @@ import '../model/station.dart';
 import '../model/rating.dart';
 import '../services/rating_service.dart';
 import '../services/auth_services.dart';
+import '../services/station_service.dart';
 import '../providers/user_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -19,6 +20,7 @@ class StationDetailScreen extends StatefulWidget {
 class _StationDetailScreenState extends State<StationDetailScreen> {
   final AuthService _authService = AuthService();
   late final RatingService _ratingService;
+  late final ChargingStationService _stationService;
   List<StationRating> _ratings = [];
   bool _isLoading = false;
   bool _ratingsLoaded = false;
@@ -26,11 +28,15 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
   int _userRating = 0;
   final _commentController = TextEditingController();
   bool _submitting = false;
+  
+  // Estado para la estación actualizada
+  ChargingStation? _updatedStation;
 
   @override
   void initState() {
     super.initState();
     _ratingService = RatingService(_authService);
+    _stationService = ChargingStationService(_authService);
     // No cargar las reseñas automáticamente
   }
 
@@ -39,23 +45,29 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
     _commentController.dispose();
     super.dispose();
   }  Future<void> _loadRatings() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _error = '';
+      });
+    }
 
     try {
       final ratings = await _ratingService.getRatingsByStation(widget.station.id);
-      setState(() {
-        _ratings = ratings;
-        _isLoading = false;
-        _ratingsLoaded = true;
-      });
+      if (mounted) {
+        setState(() {
+          _ratings = ratings;
+          _isLoading = false;
+          _ratingsLoaded = true;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load ratings: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load ratings: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
   Future<void> _loadRatingsIfNeeded() async {
@@ -64,14 +76,42 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
   }  double _calculateAverageRating() {
     // Siempre usar la calificación de la estación que viene del backend
     // El backend ya calcula el promedio correctamente incluyendo todas las calificaciones
-    return widget.station.rating;
+    return currentStation.rating;
   }
-
   int _getRatingCount() {
     // Siempre usar el conteo de la estación que viene del backend
     // El backend ya cuenta correctamente todas las calificaciones
-    return widget.station.reviewCount;
-  }  Future<void> _submitRating(int userId) async {
+    return currentStation.reviewCount;
+  }
+  // Función para recargar la información de la estación
+  Future<void> _refreshStationInfo() async {
+    try {
+      // Obtener todas las estaciones y buscar la actualizada
+      final stations = await _stationService.getNearbyStations(
+        widget.station.latitude, 
+        widget.station.longitude, 
+        0.1
+      );
+      
+      final updatedStation = stations.firstWhere(
+        (s) => s.id == widget.station.id,
+        orElse: () => widget.station,
+      );
+      
+      // Verificar si el widget sigue montado antes de llamar setState
+      if (mounted) {
+        setState(() {
+          _updatedStation = updatedStation;
+        });
+      }
+    } catch (e) {
+      print('Error refreshing station info: $e');
+      // Si hay error, mantener la información original
+    }
+  }
+
+  // Getter para obtener la estación actual (actualizada o original)
+  ChargingStation get currentStation => _updatedStation ?? widget.station;Future<void> _submitRating(int userId) async {
     if (_userRating == 0) {
       ScaffoldMessenger.of(
         context,
@@ -79,9 +119,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
       return;
     }
 
-    setState(() => _submitting = true);
-
-    try {
+    setState(() => _submitting = true);    try {
       await _ratingService.addRating(
         userId,
         widget.station.id,
@@ -90,21 +128,37 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
       );
 
       _commentController.clear();
-      setState(() {
-        _userRating = 0;
-        _submitting = false;
-      });
+      
+      // Verificar si el widget sigue montado antes de llamar setState
+      if (mounted) {
+        setState(() {
+          _userRating = 0;
+          _submitting = false;
+        });
+      }
 
+      // Recargar las calificaciones para mostrar la nueva
       _loadRatings();
+      
+      // Actualizar la información de la estación con el nuevo promedio
+      await _refreshStationInfo();
+      
+      // Solo navegar y mostrar snackbar si el widget sigue montado
+      if (mounted) {
+        // Notificar al padre que la estación ha sido actualizada
+        Navigator.of(context).pop(true);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Rating submitted successfully')),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rating submitted successfully')),
+        );
+      }
     } catch (e) {
-      setState(() => _submitting = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to submit rating: $e')));
+      if (mounted) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to submit rating: $e')));
+      }
     }
   }
 
@@ -398,18 +452,33 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                                                 await _ratingService.deleteRating(
                                                   rating.id,
                                                 );
-                                                setState(() => _ratingsLoaded = false);
+
+                                                // Verificar si el widget sigue montado antes de llamar setState
+                                                if (mounted) {
+                                                  setState(() => _ratingsLoaded = false);
+                                                }
                                                 await _loadRatings();
+                                                
+                                                // Actualizar la información de la estación con el nuevo promedio
+                                                await _refreshStationInfo();
+                                                
+                                                // Solo navegar si el widget sigue montado
+                                                if (mounted) {
+                                                  // Notificar al padre que la estación ha sido actualizada
+                                                  Navigator.of(context).pop(true);
+                                                }
                                               } catch (e) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Failed to delete review: $e',
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Failed to delete review: $e',
+                                                      ),
                                                     ),
-                                                  ),
-                                                );
+                                                  );
+                                                }
                                               }
                                             }
                                           },
