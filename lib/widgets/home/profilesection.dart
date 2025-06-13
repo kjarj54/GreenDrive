@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:greendrive/providers/user_provider.dart';
 import 'package:greendrive/screens/login_screen.dart';
 import 'package:greendrive/screens/vehicle_registration_screen.dart';
+import 'package:greendrive/screens/admin_screen.dart';
 import 'package:greendrive/services/auth_services.dart';
 import 'package:provider/provider.dart';
 
@@ -30,8 +31,7 @@ class ProfileSection extends StatelessWidget {
           child: ListView(
             children:
                 ListTile.divideTiles(
-                  context: context,
-                  tiles: [
+                  context: context,                  tiles: [
                     ListTile(
                       leading: const Icon(Icons.directions_car),
                       title: const Text('Register Vehicle'),
@@ -44,6 +44,19 @@ class ProfileSection extends StatelessWidget {
                                 (context) => VehicleRegistrationScreen(
                                   usuarioId: userId ?? 0,
                                 ),
+                          ),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.admin_panel_settings),
+                      title: const Text('Station Management'),
+                      subtitle: const Text('Add new charging stations'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AdminScreen(),
                           ),
                         );
                       },
