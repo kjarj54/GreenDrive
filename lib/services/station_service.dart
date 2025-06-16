@@ -104,4 +104,27 @@ class ChargingStationService {
     return stations.where((s) => s.rating >= 4.0).toList()
       ..sort((a, b) => b.rating.compareTo(a.rating));
   }
+  Future<bool> updateStationAvailability(int stationId, bool isAvailable) async {
+    final token = await _authService.getToken();
+    if (token == null) {
+      throw Exception('No authentication token');
+    }
+
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/chargingStations/$stationId/availability'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        'disponibilidad': isAvailable,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception('Failed to update station availability');
+    }
+  }
 }

@@ -93,12 +93,56 @@ class _MapSectionState extends State<MapSection> {
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
-
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _toggleStationAvailability(bool isAvailable) async {
+    if (_selectedStation == null) return;
+
+    try {
+      setState(() => _isLoading = true);
+      
+      final success = await _stationService.updateStationAvailability(
+        _selectedStation!.id,
+        isAvailable,
+      );
+
+      if (success) {
+        setState(() {
+          _selectedStation = ChargingStation(
+            id: _selectedStation!.id,
+            name: _selectedStation!.name,
+            latitude: _selectedStation!.latitude,
+            longitude: _selectedStation!.longitude,
+            address: _selectedStation!.address,
+            chargerType: _selectedStation!.chargerType,
+            power: _selectedStation!.power,
+            rate: _selectedStation!.rate,
+            availability: isAvailable,
+            schedule: _selectedStation!.schedule,
+            rating: _selectedStation!.rating,
+            reviewCount: _selectedStation!.reviewCount,
+            reviews: _selectedStation!.reviews,
+            totalCharges: _selectedStation!.totalCharges,
+            lastUpdated: _selectedStation!.lastUpdated,
+          );
+        });
+
+        // Actualizar el marcador en el mapa
+        _markers.removeWhere((marker) => marker.markerId.value == 'station_${_selectedStation!.id}');
+        _markers.add(_createStationMarker(station: _selectedStation!));
+
+        _showMessage(isAvailable ? 'Estación liberada exitosamente' : 'Estación ocupada exitosamente');
+      }
+    } catch (e) {
+      _showError('Error al actualizar la estación: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   void toggleMapFeature(String feature) async {
@@ -1147,9 +1191,39 @@ ${deviationScore != null
                   ),
                   const SizedBox(height: 12),
                   _buildDetailRow('Potencia:', '${_selectedStation!.power} kW'),
-                  const SizedBox(height: 12),
-                  _buildDetailRow('Tarifa:', '\$${_selectedStation!.rate}/kWh'),
+                  const SizedBox(height: 12),                  _buildDetailRow('Tarifa:', '\$${_selectedStation!.rate}/kWh'),
                   const SizedBox(height: 16),
+                  // Botones para ocupar/liberar estación
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _selectedStation!.availability
+                              ? () => _toggleStationAvailability(false)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Ocupar Estación'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: !_selectedStation!.availability
+                              ? () => _toggleStationAvailability(true)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Liberar Estación'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
